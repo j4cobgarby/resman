@@ -128,7 +128,7 @@ Exits with 0 if not reserved, or 1 if currently reserved. Just \
     parser.add_argument('-d', '--duration', help='how long to reserve server \
 use for (e.g. 1h30m, 25m, 4h)', default=-1)
 
-    parser.add_argument('-U', '--user', help='who is using the server during \
+    parser.add_argument('-u', '--user', help='who is using the server during \
 the reservation? Default is you.', default=os.getlogin())
 
     parser.add_argument('-r', '--reason', help='what experiment are you \
@@ -142,6 +142,12 @@ In this case, DURATION is ignored.', nargs='*')
     parser.add_argument('-c', '--confirm', help='interactively tell the user \
 the current status of things. if the server is reserved, they are prompted \
 to press enter to confirm that they understand this.', action='store_true')
+
+    parser.add_argument('-R', '--release', help='unlocks an existing \
+reservation. you should probably only use this if you\'re the person who made \
+the reservation in the first place, and you want to free the server earlier \
+than your allocated time slot. may also be used if this script crashes :)',
+                                                action='store_true')
 
     args = parser.parse_args()
     args.reason = ' '.join(args.reason)
@@ -168,6 +174,12 @@ confirm that you've read this :)")
             print(cols.OKGREEN + "No one is running any experiment right now, \
 do what you like :)" + cols.ENDC)
             return
+
+    if args.release:
+        if locked:
+            release()
+            print("Released the lock file, new reservations can now be made.")
+        return
 
     # If no action params given, just return the lock status
     if args.duration == -1 and args.run is None:
