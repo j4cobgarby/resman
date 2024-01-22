@@ -6,8 +6,14 @@ import argparse
 import os
 import sys
 
-LOCK_FILE = "./reslock.json"
-BLANK_DAT = {'username': '', 'reason': '', 'start_time': 0, 'duration': 0}
+LOCK_FILE = "/etc/res_lock"
+BLANK_DAT = {'username': '', 'reason': [''], 'start_time': 0, 'duration': 0}
+
+
+class cols:
+    WARNING = '\033[91m'
+    ENDC = '\033[0m'
+    OKGREEN = '\033[92m'
 
 
 # Write reservation info into a given file, and also return the data as a
@@ -67,7 +73,7 @@ def release():
 # '1h30m' = 1 hour, 30 minutes
 # '25m' = 0 hours, 25 minutes
 # '10h' = 10 hours, 0 minutes
-def parse_timestring(ts: str):
+def timestring2secs(ts: str):
     if 'h' not in ts:
         ts = '0h' + ts
     if 'm' not in ts:
@@ -84,6 +90,13 @@ def parse_timestring(ts: str):
         return None
 
 
+def secs2timestring(snds: int):
+    hours = snds // 3600
+    mins = (snds := snds % 3600) // 60
+    secs = snds % 60
+    return f"{hours}h{mins}m{secs}s"
+
+
 # Give a human readable explanation of data taken from the lock file.
 def explain_failure(dat):
     print(f"Already locked by {dat['username']}!")
@@ -94,10 +107,7 @@ def explain_failure(dat):
 command to finish running.")
     else:
         snds = int(dat['start_time'] + dat['duration'] - time.time())
-        hours = snds // 3600
-        mins = (snds := snds % 3600) // 60
-        secs = snds % 60
-        print(f"{hours}h{mins}m{secs}s left on reservation.")
+        print(f"{secs2timestring(snds)} left on reservation")
 
 
 def main():
@@ -122,15 +132,42 @@ use for (e.g. 1h30m, 25m, 4h)', default=-1)
 the reservation? Default is you.', default=os.getlogin())
 
     parser.add_argument('-r', '--reason', help='what experiment are you \
-running? default is blank. completely optional.', default='<no reason given>')
+running? default is blank. completely optional.', default=['<no reason given>'],
+                        nargs='*')
 
     parser.add_argument('-x', '--run', metavar='COMMAND', help='if this flag \
 is given, COMMAND is executed and the server is reserved until it finishes. \
 In this case, DURATION is ignored.', nargs='*')
 
+    parser.add_argument('-c', '--confirm', help='interactively tell the user \
+the current status of things. if the server is reserved, they are prompted \
+to press enter to confirm that they understand this.', action='store_true')
+
     args = parser.parse_args()
+    args.reason = ' '.join(args.reason)
 
     locked, dat = is_locked()
+
+    if args.confirm:
+        if locked:
+            print(cols.WARNING + "Be careful!" + cols.ENDC + " Someone is \
+running an experiment right now.\nPlease avoid any significant CPU or memory \
+usage for the time being.")
+            print(f"User: {dat['username']}")
+            print(f"Reason: {dat['reason']}")
+            if dat['duration'] == -1:
+                print("Time remaining: indeterminate (waiting for command to \
+terminate)")
+            else:
+                snds = int(dat['start_time'] + dat['duration'] - time.time())
+                print(f"Time remaining: {secs2timestring(snds)}")
+            input(cols.WARNING + "Please press ENTER" + cols.ENDC + " to \
+confirm that you've read this :)")
+            return
+        else:
+            print(cols.OKGREEN + "No one is running any experiment right now, \
+do what you like :)" + cols.ENDC)
+            return
 
     # If no action params given, just return the lock status
     if args.duration == -1 and args.run is None:
@@ -148,7 +185,7 @@ In this case, DURATION is ignored.', nargs='*')
         print(f"Finished with exit code {res}; unlocking.")
         release()
     else:  # Lock for certain time and then exit
-        dur_secs = parse_timestring(args.duration)
+        dur_secs = timestring2secs(args.duration)
 
         if dur_secs is None:
             print("Failed to pass time string", file=sys.stderr)
