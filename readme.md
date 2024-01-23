@@ -9,23 +9,28 @@ have it reserved for. The purpose of this is to prevent two people accidentally 
 experiments at the same time.
 
 ### Options:
- - -*h*, --help            show this help message and exit
- - -*d* DURATION, --duration DURATION
+|---------|-------------|
+| Flag(s) | Description |
+|---------|-------------|
+|-h, --help| show this help message and exit |
+
+ - -h, --help            show this help message and exit
+ - -d DURATION, --duration DURATION
                          how long to reserve server use for (e.g. 1h30m, 25m, 4h)
- - -*x* [COMMAND ...], --run [COMMAND ...]
+ - -x [COMMAND ...], --run [COMMAND ...]
                          reserve the server until COMMAND finishes. quotes (') are needed
                          around COMMAND if it contains '-'s, otherwise they're optional.
- - -*r* [REASON ...], --reason [REASON ...]
+ - -r [REASON ...], --reason [REASON ...]
                          what experiment are you running? default is blank. completely
                          optional.
- - -*R*, --release         unlocks an existing reservation. you should probably only use this
+ - -R, --release         unlocks an existing reservation. you should probably only use this
                          if you're the person who made the reservation in the first place,
                          and you want to free the server earlier than your allocated time
                          slot. may also be used if this script crashes :)
- - -*c*, --confirm         interactively tell the user the current status of things. if the
+ - -c, --confirm         interactively tell the user the current status of things. if the
                          server is reserved, they are prompted to press enter to confirm that
                          they understand this.
- - -*u* USER, --user USER  who is using the server during the reservation? Default is garby.
+ - -u USER, --user USER  who is using the server during the reservation? Default is your username.
 
 Can also be run with no arguments, to check status. Exits with 0 if not reserved, or 1 if
 currently reserved. Just `echo $?` afterwards.
