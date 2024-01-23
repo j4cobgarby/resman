@@ -1,4 +1,6 @@
-## usage: `resman [-h] [-d DURATION] [-x [COMMAND ...]] [-r [REASON ...]] [-R] [-c] [-u USER]`
+### Usage:
+
+`resman [-h] [-d DURATION] [-x [COMMAND ...]] [-r [REASON ...]] [-R] [-c] [-u USER]`
 
 A simple system resource allocation program. Persistent state stored in /etc/res_lock. This
 program does not impose any actual lock on system resource usage; it only keeps track of
@@ -6,7 +8,7 @@ which user (if any) has laid claim to it for the time being, and if applicable h
 have it reserved for. The purpose of this is to prevent two people accidentally running
 experiments at the same time.
 
-## Options:
+### Options:
  - -*h*, --help            show this help message and exit
  - -*d* DURATION, --duration DURATION
                          how long to reserve server use for (e.g. 1h30m, 25m, 4h)
