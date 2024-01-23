@@ -99,7 +99,7 @@ def secs2timestring(snds: int):
 
 # Give a human readable explanation of data taken from the lock file.
 def explain_failure(dat):
-    print(f"Already locked by {dat['username']}!")
+    print(f"{cols.WARNING}Already locked by {dat['username']}!{cols.ENDC}")
     print(f"Reason: '{dat['reason']}'")
 
     if dat['duration'] == -1:
@@ -122,32 +122,32 @@ The purpose of this is to prevent two people accidentally running experiments \
 at the same time.',
         epilog='Can also be run with no arguments, to check status. \
 Exits with 0 if not reserved, or 1 if currently reserved. Just \
-`echo $?` afterwards'
+`echo $?` afterwards.'
     )
 
     parser.add_argument('-d', '--duration', help='how long to reserve server \
 use for (e.g. 1h30m, 25m, 4h)', default=-1)
 
-    parser.add_argument('-u', '--user', help='who is using the server during \
-the reservation? Default is you.', default=os.getlogin())
+    parser.add_argument('-x', '--run', metavar='COMMAND', help='reserve the \
+server until COMMAND finishes. quotes (\') are needed around COMMAND if it \
+contains \'-\'s, otherwise they\'re optional.', nargs='*')
 
     parser.add_argument('-r', '--reason', help='what experiment are you \
 running? default is blank. completely optional.', default=['<no reason given>'],
                         nargs='*')
-
-    parser.add_argument('-x', '--run', metavar='COMMAND', help='if this flag \
-is given, COMMAND is executed and the server is reserved until it finishes. \
-In this case, DURATION is ignored.', nargs='*')
-
-    parser.add_argument('-c', '--confirm', help='interactively tell the user \
-the current status of things. if the server is reserved, they are prompted \
-to press enter to confirm that they understand this.', action='store_true')
 
     parser.add_argument('-R', '--release', help='unlocks an existing \
 reservation. you should probably only use this if you\'re the person who made \
 the reservation in the first place, and you want to free the server earlier \
 than your allocated time slot. may also be used if this script crashes :)',
                                                 action='store_true')
+
+    parser.add_argument('-c', '--confirm', help='interactively tell the user \
+the current status of things. if the server is reserved, they are prompted \
+to press enter to confirm that they understand this.', action='store_true')
+
+    parser.add_argument('-u', '--user', help=f'who is using the server during \
+the reservation? Default is {os.getlogin()}.', default=os.getlogin())
 
     args = parser.parse_args()
     args.reason = ' '.join(args.reason)
@@ -168,7 +168,7 @@ terminate)")
                 snds = int(dat['start_time'] + dat['duration'] - time.time())
                 print(f"Time remaining: {secs2timestring(snds)}")
             input(cols.WARNING + "Please press ENTER" + cols.ENDC + " to \
-confirm that you've read this :)")
+confirm that you've read this :) ")
             return
         else:
             print(cols.OKGREEN + "No one is running any experiment right now, \
