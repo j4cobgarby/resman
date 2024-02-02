@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-import time
+import time, datetime
 import json
 import argparse
-import os
-import sys
+import os, sys
 
+LOG_FILE = "/etc/res_log"
 LOCK_FILE = "/etc/res_lock"
+
 BLANK_DAT = {'username': '', 'reason': [''], 'start_time': 0, 'duration': 0}
 
 
@@ -108,6 +109,21 @@ command to finish running.")
     else:
         snds = int(dat['start_time'] + dat['duration'] - time.time())
         print(f"{secs2timestring(snds)} left on reservation")
+
+
+def log_lock(user, reason, dur = "", cmd = ""):
+    try:
+        with open(LOG_FILE, "a") as log_file:
+            now = datetime.datetime.now().strftime("%x %X")
+            if dur:
+                log_file.write(f"[{now}] '{user}' locked server for {dur}. Reason = {reason}")
+            elif cmd:
+                log_file.write(f"[{now}] '{user}' locked server until `{cmd}` finishes. Reason = {reason}")
+            else:
+                print("[warning] `log_lock` called with no duration or command.")
+                log_file.write(f"[{now}] '{user}' locked server. Reason = {reason}")
+    except:
+        print("[warning] Failed to open or write log file at {LOG_FILE}. Check permissions.")
 
 
 def main():
