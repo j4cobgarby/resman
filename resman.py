@@ -116,12 +116,12 @@ def log_lock(user, reason, dur = "", cmd = ""):
         with open(LOG_FILE, "a") as log_file:
             now = datetime.datetime.now().strftime("%x %X")
             if dur:
-                log_file.write(f"[{now}] '{user}' locked server for {dur}. Reason = {reason}")
+                log_file.write(f"[{now}] '{user}' locked server for {dur}. Reason = {reason}\n")
             elif cmd:
-                log_file.write(f"[{now}] '{user}' locked server until `{cmd}` finishes. Reason = {reason}")
+                log_file.write(f"[{now}] '{user}' locked server until `{cmd}` finishes. Reason = {reason}\n")
             else:
                 print("[warning] `log_lock` called with no duration or command.")
-                log_file.write(f"[{now}] '{user}' locked server. Reason = {reason}")
+                log_file.write(f"[{now}] '{user}' locked server. Reason = {reason}\n")
     except:
         print("[warning] Failed to open or write log file at {LOG_FILE}. Check permissions.")
 
@@ -207,11 +207,19 @@ do what you like :)" + cols.ENDC)
         sys.exit(os.EX_TEMPFAIL)
 
     if args.run:  # Lock for indeterminate time until command finishes
-        try_lock(args.user, int(time.time()), -1, args.reason)
-        cmd = ' '.join(args.run)
-        res = os.system(cmd)
-        print(f"Finished with exit code {res}; unlocking.")
-        release()
+        successful, _ = try_lock(args.user, int(time.time()), -1, args.reason)
+
+        if not successful:
+            print("Server locked by someone else. Race condition edge case.")
+            sys.exit(1)
+        else:
+            cmd = ' '.join(args.run)
+            log_lock(args.user, args.reason, "", cmd)
+
+            res = os.system(cmd)
+
+            print(f"Finished with exit code {res}; unlocking.")
+            release()
     else:  # Lock for certain time and then exit
         dur_secs = timestring2secs(args.duration)
 
@@ -222,7 +230,12 @@ do what you like :)" + cols.ENDC)
         print(f"Allocating server for {args.user} for {args.duration} \
 ({dur_secs}s):\nReason: {args.reason}")
 
-        try_lock(args.user, int(time.time()), dur_secs, args.reason)
+        successful, _ = try_lock(args.user, int(time.time()), dur_secs, args.reason)
+
+        if not successful:
+            print("Server locked by someone else. Race condition edge case.")
+        else:
+            log_lock(args.user, args.reason, args.duration, "")
 
 
 if __name__ == '__main__':
