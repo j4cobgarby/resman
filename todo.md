@@ -7,7 +7,7 @@ Things that would be nice to do:
    - Use of `wall` or similar (maybe there's something a bit more modern) that tells everyone on the server when someone begins an experiment (though careful, this might get annoying, maybe there's a better way)
 
  - Look into cgroups to impose actual resource locking constraints. Chatgpt says we can do something like this:
-```
+```bash
 # Create a named cgroup
 cgcreate -g cpuset:resman_cgroup
 
