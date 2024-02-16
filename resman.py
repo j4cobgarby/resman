@@ -180,6 +180,8 @@ usage for the time being.")
             if dat['duration'] == -1:
                 print("Time remaining: indeterminate (waiting for command to \
 terminate)")
+                runtime = int(time.time()) - dat['start_time']
+                print(f"Time since job started: {secs2timestring(runtime)}")
             else:
                 snds = int(dat['start_time'] + dat['duration'] - time.time())
                 print(f"Time remaining: {secs2timestring(snds)}")
