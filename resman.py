@@ -95,7 +95,15 @@ def secs2timestring(snds: int):
     hours = snds // 3600
     mins = (snds := snds % 3600) // 60
     secs = snds % 60
-    return f"{hours}h{mins}m{secs}s"
+
+    timestring = ""
+    if hours:
+        timestring += f"{hours}h "
+    if hours or mins:
+        timestring += f"{mins}m "
+    timestring += f"{secs}s"
+
+    return timestring
 
 
 # Give a human readable explanation of data taken from the lock file.
