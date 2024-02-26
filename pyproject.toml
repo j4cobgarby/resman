@@ -1,2 +1,11 @@
+[project]
+name = "resman"
+version = "1.0.20240216"
+
+[project.optional-dependencies]
+dev = [
+    "black"
+]
+
 [tool.black]
 line-length = 120
