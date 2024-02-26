@@ -1,4 +1,9 @@
-### Usage:
+resman
+======
+
+A simple system resource reservation manager.
+
+# Usage:
 
 `resman [-h] [-d DURATION] [-x [COMMAND ...]] [-r [REASON ...]] [-R] [-c] [-u USER]`
 
@@ -8,7 +13,7 @@ which user (if any) has laid claim to it for the time being, and if applicable h
 have it reserved for. The purpose of this is to prevent two people accidentally running
 experiments at the same time.
 
-### Options:
+# Options:
 | Flag(s) | Description |
 |---------|-------------|
 |-h, --help| Show this **help message** and exit |
@@ -20,3 +25,14 @@ experiments at the same time.
 
 Can also be run with **no arguments**, to check status. Exits with 0 if not reserved, or 1 if
 currently reserved. Just `echo $?` afterwards.
+
+# Development
+
+Install development dependencies inside a virtual environment:
+
+```shell
+$ python3 -m venv venv
+$ source venv/bin/activate
+
+(venv)$ pip install -e .[dev] 
+```
