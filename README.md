@@ -48,6 +48,8 @@ cat ./prompt-alert.sh | sudo tee -a /etc/bash.bashrc.local > /dev/null
 cat ./prompt-alert.sh | sudo tee -a /etc/zsh.zshrc.local > /dev/null
 ```
 
+Alternatively you may `source path/to/prompt-alert.sh` at the end of your bashrc.
+
 # Development
 
 Install development dependencies inside a virtual environment:
