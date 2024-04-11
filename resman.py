@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import time
+import getpass
 
 LOG_FILE = "/etc/res_log"
 LOCK_FILE = "/etc/res_lock"
@@ -195,8 +196,8 @@ def main():
     parser.add_argument(
         "-u",
         "--user",
-        help=f"who is using the server during the reservation? Default is {os.getlogin()}.",
-        default=os.getlogin(),
+        help=f"who is using the server during the reservation? Default is {getpass.getuser()}.",
+        default=getpass.getuser(),
     )
 
     args = parser.parse_args()
