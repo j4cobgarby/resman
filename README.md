@@ -26,6 +26,30 @@ experiments at the same time.
 Can also be run with **no arguments**, to check status. Exits with 0 if not reserved, or 1 if
 currently reserved. Just `echo $?` afterwards.
 
+# System Installation
+
+Install the program with
+```shell
+sudo ./install.sh
+```
+
+## Optional shell integration
+
+To more easily see when someone is running, you can use the code from `prompt-alert.sh`, which
+sets the global environment variable `RESMAN_ALERT` to a red `!` when the system is reserved. This
+is updated every time you refresh the prompt. It also includes a new PS1 variable to include
+this alert into the default prompt.
+
+The 'RESMAN_ALERT' variable can also be manually included in custom prompts.
+
+For example, append this code to the end of `/etc/bash.bashrc.local` and `/etc/zsh.zshrc.local`:
+```shell
+cat ./prompt-alert.sh | sudo tee -a /etc/bash.bashrc.local > /dev/null
+cat ./prompt-alert.sh | sudo tee -a /etc/zsh.zshrc.local > /dev/null
+```
+
+Alternatively you may `source path/to/prompt-alert.sh` at the end of your bashrc.
+
 # Development
 
 Install development dependencies inside a virtual environment:
