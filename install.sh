@@ -1,5 +1,7 @@
 #!/usr/bin/bash
 
+# This could be done with a link, but since the resman code resides in my own home directory,
+# most people would not have permission to execute that file.
 cp ./resman.py /usr/bin/resman
 echo "Installed successfully at /usr/bin/resman. Make sure /usr/bin is in \$PATH"
 
