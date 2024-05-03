@@ -35,20 +35,13 @@ sudo ./install.sh
 
 ## Optional shell integration
 
-To more easily see when someone is running, you can use the code from `prompt-alert.sh`, which
-sets the global environment variable `RESMAN_ALERT` to a red `!` when the system is reserved. This
-is updated every time you refresh the prompt. It also includes a new PS1 variable to include
-this alert into the default prompt.
+It's recommended to `source prompt-alert.sh` in your personal bashrc, or add it to the systemwide `/etc/bash.bashrc.local` for all users. This will **set** the `PROMPT_COMMAND` env variable so that whenever the prompt is printed, resman's lock is checked, and a warning is printed if it's locked.
 
-The 'RESMAN_ALERT' variable can also be manually included in custom prompts.
+### Customisation
 
-For example, append this code to the end of `/etc/bash.bashrc.local` and `/etc/zsh.zshrc.local`:
-```shell
-cat ./prompt-alert.sh | sudo tee -a /etc/bash.bashrc.local > /dev/null
-cat ./prompt-alert.sh | sudo tee -a /etc/zsh.zshrc.local > /dev/null
-```
+The env variable `_RESMAN_WORD` may be set to whatever you want to change the warning message that gets displayed.
 
-Alternatively you may `source path/to/prompt-alert.sh` at the end of your bashrc.
+Some people need to customise this further, for example for complex prompts. For this, it's recommended to simply write your own PROMPT_COMMAND, or even modify your PS1 to include a call to resman. This is not difficult to do; have a look at `prompt-alert.sh` for guidance here.
 
 # Development
 
