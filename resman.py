@@ -220,7 +220,10 @@ def main():
             else:
                 snds = int(dat["start_time"] + dat["duration"] - time.time())
                 print(f"Time remaining: {secs2timestring(snds)}")
-            input(cols.WARNING + "Please press ENTER" + cols.ENDC + " to confirm that you've read this :) ")
+
+            # Only prompt for read confirmation if in interactive session
+            if sys.stdout.isatty():
+                input(cols.WARNING + "Please press ENTER" + cols.ENDC + " to confirm that you've read this :) ")
             return
         else:
             print(cols.OKGREEN + "No one is running any experiment right now, do what you like :)" + cols.ENDC)
