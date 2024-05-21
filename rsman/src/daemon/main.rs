@@ -2,45 +2,52 @@ use std::sync::Arc;
 use std::{fs, io, str};
 
 use nix::sys::signal::Signal::*;
-use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::task;
 use tokio::time::{sleep, Duration};
 
-use resman_common::{QueueRequest, SOCKET_NAME};
+use resman_common::{IPCMessage, QueueRequest, QueueResponse, SkipResponse, SOCKET_NAME};
 
 mod shared_queue;
-use shared_queue::JobQueue;
+use shared_queue::*;
 
 use nix::sys::signal::kill;
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::Pid;
 
-async fn handle_client(mut stream: UnixStream, queue: Arc<JobQueue>) -> io::Result<()> {
-    let mut buff = [0u8; 512];
-    let mut full_str: String = "".to_string();
+async fn handle_client(mut stream: UnixStream) -> io::Result<()> {
+    let mut buff: String = String::new();
 
-    loop {
-        let n_bytes = stream.read(&mut buff).await?;
-        if n_bytes == 0 {
-            break;
-        }
+    stream.read_to_string(&mut buff).await?;
 
-        let buff = match str::from_utf8(&buff[..n_bytes]) {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("Invalid UTF-8 from client: {}", e);
-                break;
-            }
-        };
-
-        full_str.push_str(buff);
-    }
-
-    let request: QueueRequest = serde_json::from_str(&full_str)?;
+    let request: IPCMessage = serde_json::from_str(&buff)?;
     println!("Got data: {:?}", request);
 
-    queue.enqueue(request).await;
+    match request {
+        IPCMessage::QueueReq(req) => {
+            let resp = QueueResponse {
+                success: true,
+                place_in_queue: 0,
+                job_id: 0,
+            };
+
+            let resp = serde_json::to_string(&resp).unwrap();
+            stream.write_all(resp.as_bytes()).await?;
+        }
+
+        IPCMessage::SkipReq(req) => {
+            let resp = SkipResponse {
+                success: true,
+            };
+        }
+
+        IPCMessage::StatReq(req) => {
+
+        }
+    }
+
+    // queue.enqueue(request).await;
 
     Ok(())
 }
@@ -56,11 +63,12 @@ fn verify_process(pid: Pid) -> bool {
     }
 }
 
-async fn dispatch_jobs(queue: Arc<JobQueue>) {
+async fn dispatch_jobs() {
     loop {
         sleep(Duration::from_millis(1000)).await;
 
-        let next_job = queue.dequeue().await;
+        let next_job: Job = todo!();
+
         println!("[dispatcher] Got {:#?}", next_job);
 
         let pid = Pid::from_raw(next_job.pid);
@@ -120,7 +128,8 @@ async fn dispatch_jobs(queue: Arc<JobQueue>) {
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let job_queue = Arc::new(JobQueue::new());
+    let conn = db_connect().unwrap();
+    conn.close().unwrap();
 
     match fs::remove_file(SOCKET_NAME) {
         _ => {}
@@ -129,17 +138,15 @@ async fn main() -> io::Result<()> {
 
     println!("Server listening at {}", SOCKET_NAME);
 
-    let queue_clone = job_queue.clone();
     task::spawn(async move {
-        dispatch_jobs(queue_clone).await;
+        dispatch_jobs().await;
     });
 
     loop {
         match listener.accept().await {
             Ok((stream, _addr)) => {
-                let queue_clone = job_queue.clone();
                 task::spawn(async move {
-                    if let Err(e) = handle_client(stream, queue_clone).await {
+                    if let Err(e) = handle_client(stream).await {
                         eprintln!("Error handling client: {}", e);
                     }
                 });

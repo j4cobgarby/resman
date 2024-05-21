@@ -26,7 +26,9 @@ pub struct QueueResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SkipRequest {
-    pub job_id: i32,
+    pub job_id: Option<i32>,
+    pub uid: u32,
+    pub force: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
