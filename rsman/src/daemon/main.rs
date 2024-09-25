@@ -17,6 +17,7 @@ use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::Pid;
 
 async fn handle_client(mut stream: UnixStream) -> io::Result<()> {
+    println!("Handling client.");
     let mut buff: String = String::new();
 
     stream.read_to_string(&mut buff).await?;
@@ -26,25 +27,17 @@ async fn handle_client(mut stream: UnixStream) -> io::Result<()> {
 
     match request {
         IPCMessage::QueueReq(req) => {
-            let resp = QueueResponse {
-                success: true,
-                place_in_queue: 0,
-                job_id: 0,
-            };
-
-            let resp = serde_json::to_string(&resp).unwrap();
-            stream.write_all(resp.as_bytes()).await?;
+            println!("Got request: {:?}", req);
+            let pid = Pid::from_raw(req.pid);
+            kill(pid, SIGUSR1)?;
+            println!("Sent signal.");
         }
 
         IPCMessage::SkipReq(req) => {
-            let resp = SkipResponse {
-                success: true,
-            };
+            let resp = SkipResponse { success: true };
         }
 
-        IPCMessage::StatReq(req) => {
-
-        }
+        IPCMessage::StatReq(req) => {}
     }
 
     // queue.enqueue(request).await;
@@ -63,11 +56,43 @@ fn verify_process(pid: Pid) -> bool {
     }
 }
 
+async fn schedule() -> Option<Job> {
+    let next_job: Job = match dequeue_job() {
+        Ok(Some(job)) => job,
+        _ => return None,
+    };
+
+    println!("[scheduler] Got {:#?}", next_job);
+
+    let pid = Pid::from_raw(next_job.pid);
+    if verify_process(pid) {
+        println!("[scheduler] Starting job with PID {}", next_job.pid);
+        match kill(pid, SIGUSR1) {
+            Ok(_) => println!("[scheduler] Signal sent properly"),
+            Err(e) => {
+                eprintln!("[scheduler] Failed to send SIGUSR1: {}", e);
+                return None;
+            }
+        }
+    }
+
+    Some(next_job)
+}
+
 async fn dispatch_jobs() {
     loop {
         sleep(Duration::from_millis(1000)).await;
 
-        let next_job: Job = todo!();
+        let next_job: Job = match dequeue_job() {
+            Ok(Some(job)) => job,
+            Ok(None) => {
+                continue;
+            }
+            Err(e) => {
+                eprintln!("Failed to get job: {}", e.to_string());
+                continue;
+            }
+        };
 
         println!("[dispatcher] Got {:#?}", next_job);
 
@@ -128,19 +153,12 @@ async fn dispatch_jobs() {
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let conn = db_connect().unwrap();
-    conn.close().unwrap();
-
     match fs::remove_file(SOCKET_NAME) {
         _ => {}
     }
     let listener = UnixListener::bind(SOCKET_NAME)?;
 
     println!("Server listening at {}", SOCKET_NAME);
-
-    task::spawn(async move {
-        dispatch_jobs().await;
-    });
 
     loop {
         match listener.accept().await {

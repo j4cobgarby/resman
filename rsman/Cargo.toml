@@ -8,11 +8,11 @@ name = "resman_common"
 path = "lib/resman_common.rs"
 
 [[bin]]
-name = "resdaemon"
+name = "resmand"
 path = "src/daemon/main.rs"
 
 [[bin]]
-name = "resman"
+name = "resmanc"
 path = "src/client/main.rs"
 
 [dependencies]

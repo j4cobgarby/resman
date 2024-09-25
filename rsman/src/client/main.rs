@@ -1,9 +1,11 @@
 use clap::{Parser, Subcommand};
+use nix::unistd::{ForkResult, Pid, Uid};
 use resman_common::*;
+use std::ffi::{CString, NulError};
 use std::io;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
-use nix::unistd::Uid;
+use tokio::signal::unix::{signal, SignalKind};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -42,6 +44,14 @@ enum Subcommands {
     },
 }
 
+fn to_sh_args(args: &Vec<String>) -> Vec<CString> {
+    vec![
+        CString::new("/usr/bin/sh").expect("Failure"),
+        CString::new("-c").expect("Failure"),
+        CString::new(args.join(" ")).expect("Failure"),
+    ]
+}
+
 #[tokio::main]
 async fn main() -> io::Result<()> {
     let args = Args::parse();
@@ -50,11 +60,16 @@ async fn main() -> io::Result<()> {
 
     match &args.subcommand {
         Subcommands::Exec { msg, args } => {
-            println!("Executing command: {:?}", args);
+            let mut stream = match UnixStream::connect(SOCKET_NAME).await {
+                Ok(s) => s,
+                Err(e) => {
+                    panic!("Failed to connect to daemon: {}", e.to_string());
+                }
+            };
 
-            let req: QueueRequest = QueueRequest {
-                pid: 1337,
-                uid: 2,
+            let req = QueueRequest {
+                pid: Pid::this().as_raw(),
+                uid: Uid::current().as_raw(),
                 msg: match msg {
                     Some(msg) => msg.to_owned(),
                     None => String::from(""),
@@ -65,23 +80,38 @@ async fn main() -> io::Result<()> {
             let req = IPCMessage::QueueReq(req);
             let req = serde_json::to_string(&req).unwrap();
 
-            println!("Serialised = {}", req);
-
-            let mut stream = UnixStream::connect(SOCKET_NAME).await?;
             stream.write_all(req.as_bytes()).await?;
+            println!("Written data to daemon");
+            stream.shutdown().await?;
 
-            let mut resp: String = String::new();
-            stream.read_to_string(&mut resp).await?;
+            let mut sig = signal(SignalKind::user_defined1())?;
+            sig.recv().await;
+            println!("Got signal!!");
 
-            let resp: QueueResponse = serde_json::from_str(&resp)?;
-            println!("Got response from server: {:?}", resp);
+            match unsafe { nix::unistd::fork() } {
+                Ok(ForkResult::Parent { child }) => {
+                    println!("[resman] Making your job! PID = {}", child);
+                    loop {
+                        let stat = nix::sys::wait::waitpid(child, None).unwrap();
+                    }
+                    println!("[resman] Child process ended!");
+                }
+                Ok(ForkResult::Child) => {
+                    nix::unistd::execvp(
+                        &CString::new("sh").expect("Failed to make to c str"),
+                        &to_sh_args(args)[..],
+                    )
+                    .expect("Failed to exec");
+                }
+                Err(_) => println!("Failed to fork."),
+            }
         }
 
         Subcommands::Check {
             interactive,
             silent,
         } => {
-            let req = IPCMessage::StatReq(StatusRequest {  });
+            let req = IPCMessage::StatReq(StatusRequest {});
             let req = serde_json::to_string(&req).unwrap();
 
             println!("Serialised = {}", req);
@@ -90,7 +120,7 @@ async fn main() -> io::Result<()> {
         }
 
         Subcommands::Skip { job_id, force } => {
-            let req = IPCMessage::SkipReq(SkipRequest{
+            let req = IPCMessage::SkipReq(SkipRequest {
                 job_id: *job_id,
                 uid: Uid::current().as_raw(),
                 force: *force,
