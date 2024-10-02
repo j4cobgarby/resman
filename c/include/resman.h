@@ -1,10 +1,21 @@
+// vim: fdm=marker
 #ifndef RESMAN_H
 #define RESMAN_H
 
-#include <stdint.h>
 #include <sys/types.h> /* uid_t, pid_t */
 #include <time.h> /* time() */
 #include <stdio.h> /* fopen(), printf() */
+
+#define UNUSED __attribute__((unused))
+
+extern const char *socket_addr;
+
+/*{{{ IPC Structures */
+/* Size of serialised job, excluding message */
+#define JOB_SER_BASELEN 34
+
+/* Max size of message plus rest of fields */
+#define JOB_SER_MAXLEN (255 + JOB_SER_BASELEN)
 
 enum job_type {
     JOB_CMD,
@@ -24,13 +35,13 @@ typedef struct job_descriptor {
 
     enum job_type req_type;
     union {
-	struct {
-	    /* PID to signal when it's time to start job */
-	    pid_t pid;
-	} cmd;
-	struct {
-	    long secs;
-	} timeslot;
+        struct {
+            /* PID to signal when it's time to start job */
+            pid_t pid;
+        } cmd;
+        struct {
+            unsigned int secs;
+        } timeslot;
     };
 } job_descriptor;
 
@@ -41,13 +52,14 @@ typedef struct {
     /* First job in response linked list */
     job_descriptor *first_job;
 } info_request;
+/*}}}*/
 
 void free_job_descriptor(job_descriptor *job);
 
 int readcsv_job(FILE *csv, job_descriptor *job);
 int writecsv_job(FILE *csv, job_descriptor *job);
 
-int deserialise_job(const char *buf, job_descriptor *job);
+int deserialise_job(const char *buf, size_t len, job_descriptor *job);
 int serialise_job(char *buf, size_t len, job_descriptor *job);
 
-#endif
+#endif /* RESMAN_H */
