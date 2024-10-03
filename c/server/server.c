@@ -1,24 +1,22 @@
 // vim: fdm=marker
-#include "resman.h"
-
+#include <signal.h> /* signal() */
+#include <stdbool.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
-
 #include <unistd.h>
-#include <stdlib.h>
-#include <stdbool.h>
 
-#include <signal.h> /* signal() */
+#include "resman.h"
 
 #define LISTEN_QUEUE 8
 
-void sigint_handler(int sig UNUSED) {/*{{{*/
+void sigint_handler(int sig UNUSED) { /*{{{*/
     printf("Caught SIGINT: exiting.\n");
     exit(EXIT_SUCCESS);
-}/*}}}*/
+} /*}}}*/
 
-int main(void) {/*{{{*/
+int main(void) { /*{{{*/
     int soc_listen, soc_client;
     struct sockaddr_un sa_local = {0};
     struct sockaddr_un sa_client = {0};
@@ -61,8 +59,8 @@ int main(void) {/*{{{*/
         printf("[info] Client connected.\n");
 
         int bytes_read;
-        if ((bytes_read = recv(soc_client, read_buf,
-                               JOB_SER_MAXLEN, 0)) == -1) {
+        if ((bytes_read = recv(soc_client, read_buf, JOB_SER_MAXLEN, 0)) ==
+            -1) {
             fprintf(stderr, "Failed to read from client.\n");
         }
 
@@ -70,4 +68,4 @@ int main(void) {/*{{{*/
 
         close(soc_client);
     }
-}/*}}}*/
+} /*}}}*/

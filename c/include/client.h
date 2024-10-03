@@ -38,24 +38,24 @@ struct args_queue {
 static struct argp_option options_run[] = {
     {"msg",     'm', "MESSAGE", 0, "Description of your job.", 0},
     {"verbose", 'V', 0,         0, "Give verbose output.",     0},
-    {0},
+    {0,         0,   0,         0, 0,                          0},
 };
 
 static struct argp argp_run = {
     options_run, &parser_run, "COMMAND", "Submits a job to resmand.",
-    NULL, NULL, NULL
-};
+    NULL,        NULL,        NULL};
 
 static struct argp_option options_time[] = {
     {"msg",     'm', "MESSAGE", 0, "Explanation for your reservation.", 0},
     {"verbose", 'V', 0,         0, "Give verbose output.",              0},
-    {0},
+    {0,         0,   0,         0, 0,                                   0},
 };
 
 static struct argp argp_time = {
-    options_time, &parser_time, "DURATION", "Reserves the server for some time.",
-    NULL, NULL, NULL
-};
+    options_time, &parser_time,
+    "DURATION",   "Reserves the server for some time.",
+    NULL,         NULL,
+    NULL};
 
 /*}}}*/
 

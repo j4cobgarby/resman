@@ -1,15 +1,13 @@
-#include "resman.h"
-
-#include <stdlib.h>
-#include <string.h>
 #include <assert.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "resman.h"
 
 const char *socket_addr = "/tmp/resman.sock";
 
-void free_job_descriptor(job_descriptor *job) {
-    free(job->msg);
-}
+void free_job_descriptor(job_descriptor *job) { free(job->msg); }
 
 int ser32(char *b, uint32_t x) {
     for (int j = 3; j >= 0; j--) {
@@ -92,14 +90,14 @@ int deserialise_job(const char *buf, size_t len, job_descriptor *job) {
     job->req_type = (enum job_type)buf[i++];
 
     i += deser32(&buf[i], &job->uid);
-    i += deser64(&buf[i], (uint64_t*)&job->t_submitted);
-    i += deser64(&buf[i], (uint64_t*)&job->t_started);
-    i += deser64(&buf[i], (uint64_t*)&job->t_ended);
+    i += deser64(&buf[i], (uint64_t *)&job->t_submitted);
+    i += deser64(&buf[i], (uint64_t *)&job->t_started);
+    i += deser64(&buf[i], (uint64_t *)&job->t_ended);
 
     if (job->req_type == JOB_CMD) {
-        i += deser32(&buf[i], (uint32_t*)&job->cmd.pid);
+        i += deser32(&buf[i], (uint32_t *)&job->cmd.pid);
     } else if (job->req_type == JOB_TIMESLOT) {
-        i += deser32(&buf[i], (uint32_t*)&job->timeslot.secs);
+        i += deser32(&buf[i], (uint32_t *)&job->timeslot.secs);
     } else {
         return -1;
     }

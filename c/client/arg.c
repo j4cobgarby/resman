@@ -1,15 +1,16 @@
 // vim: fdm=marker
-#include "client.h"
 #include <argp.h>
 #include <stdlib.h>
 #include <string.h>
 
-void print_subcmds(char *prog) {/*{{{*/
+#include "client.h"
+
+void print_subcmds(char *prog) { /*{{{*/
     fprintf(stderr, "Usage: %s [subcommand] <options>\n", prog);
     fprintf(stderr, "Valid subcommands: [r]un, [t]ime, [q]ueue\n");
-}/*}}}*/
+} /*}}}*/
 
-static unsigned int parse_duration(const char *s) {/*{{{*/
+static unsigned int parse_duration(const char *s) { /*{{{*/
     unsigned int secs = 0;
     unsigned long acc;
     char *endptr;
@@ -53,9 +54,9 @@ static unsigned int parse_duration(const char *s) {/*{{{*/
     }
 
     return secs;
-}/*}}}*/
+} /*}}}*/
 
-error_t parser_run(int key, char *arg, struct argp_state *state){/*{{{*/
+error_t parser_run(int key, char *arg, struct argp_state *state) { /*{{{*/
     struct args_run *args = (struct args_run *)state->input;
 
     switch (key) {
@@ -85,9 +86,9 @@ error_t parser_run(int key, char *arg, struct argp_state *state){/*{{{*/
     }
 
     return 0;
-}/*}}}*/
+} /*}}}*/
 
-error_t parser_time(int key, char *arg, struct argp_state *state){/*{{{*/
+error_t parser_time(int key, char *arg, struct argp_state *state) { /*{{{*/
     struct args_time *args = (struct args_time *)state->input;
 
     switch (key) {
@@ -117,8 +118,8 @@ error_t parser_time(int key, char *arg, struct argp_state *state){/*{{{*/
     }
 
     return 0;
-}/*}}}*/
+} /*}}}*/
 
-error_t parser_queue(int key, char *arg, struct argp_state *state){/*{{{*/
+error_t parser_queue(int key, char *arg, struct argp_state *state) { /*{{{*/
     return 0;
-}/*}}}*/
+} /*}}}*/

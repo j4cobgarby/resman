@@ -2,9 +2,9 @@
 #ifndef RESMAN_H
 #define RESMAN_H
 
+#include <stdio.h>     /* fopen(), printf() */
 #include <sys/types.h> /* uid_t, pid_t */
-#include <time.h> /* time() */
-#include <stdio.h> /* fopen(), printf() */
+#include <time.h>      /* time() */
 
 #define UNUSED __attribute__((unused))
 
