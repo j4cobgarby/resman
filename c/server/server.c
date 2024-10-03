@@ -1,3 +1,4 @@
+// vim: fdm=marker
 #include "resman.h"
 
 #include <sys/socket.h>
@@ -12,12 +13,12 @@
 
 #define LISTEN_QUEUE 8
 
-void sigint_handler(int sig UNUSED) {
+void sigint_handler(int sig UNUSED) {/*{{{*/
     printf("Caught SIGINT: exiting.\n");
     exit(EXIT_SUCCESS);
-}
+}/*}}}*/
 
-int main() {
+int main(void) {/*{{{*/
     int soc_listen, soc_client;
     struct sockaddr_un sa_local = {0};
     struct sockaddr_un sa_client = {0};
@@ -69,4 +70,4 @@ int main() {
 
         close(soc_client);
     }
-}
+}/*}}}*/

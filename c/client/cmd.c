@@ -1,14 +1,15 @@
 // vim: fdm=marker
-#include "client.h"
-#include "resman.h"
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <signal.h>
 
-int subcmd_run(int argc, char **argv) {/*{{{*/
+#include "client.h"
+#include "resman.h"
+
+int subcmd_run(int argc, char **argv) { /*{{{*/
     struct args_run args = {NULL, NULL, 0, 0};
 
     int soc;
@@ -19,7 +20,7 @@ int subcmd_run(int argc, char **argv) {/*{{{*/
     char ser_buff[JOB_SER_MAXLEN];
     int ser_len;
 
-    argp_parse(&argp_run, argc-1, argv+1, 0, 0, (void*)&args);
+    argp_parse(&argp_run, argc - 1, argv + 1, 0, 0, (void *)&args);
 
     if (!args.cmd) {
         fprintf(stderr, "[error] No command found after parsing.\n");
@@ -74,7 +75,7 @@ int subcmd_run(int argc, char **argv) {/*{{{*/
         perror("sigprocmask");
         return -1;
     }
-    
+
     if (args.verbose) printf("Waiting for signal.\n");
 
     if (sigwait(&sigset, &sig) != 0) {
@@ -86,19 +87,21 @@ int subcmd_run(int argc, char **argv) {/*{{{*/
 
     fprintf(stderr, "[error] Failed to execute your command!\n");
     return -1;
-}/*}}}*/
+} /*}}}*/
 
-int subcmd_time(int argc, char **argv) {/*{{{*/
+int subcmd_time(int argc, char **argv) { /*{{{*/
     struct args_time args = {NULL, -1, 0};
 
-    argp_parse(&argp_time, argc-1, argv+1, 0, 0, (void*)&args);
-
-    if (args.seconds < 0) {
-        fprintf(stderr, "No duration was given.\n");
-        return -1;
-    }
+    argp_parse(&argp_time, argc - 1, argv + 1, 0, 0, (void *)&args);
 
     if (args.verbose) {
+        if (args.seconds <= 0) {
+            fprintf(stderr, "No duration was given.\n");
+            return -1;
+        } else {
+            printf("Duration: %d seconds\n", args.seconds);
+        }
+
         if (args.msg) {
             printf("Message: %s\n", args.msg);
         } else {
@@ -106,14 +109,16 @@ int subcmd_time(int argc, char **argv) {/*{{{*/
         }
     }
 
-    return 0;
-}/*}}}*/
+    // TODO: Send time request to server.
 
-int subcmd_queue(int argc, char **argv) {/*{{{*/
+    return 0;
+} /*}}}*/
+
+int subcmd_queue(int argc, char **argv) { /*{{{*/
     printf("subcommand queue\n");
     for (int i = 0; i < argc; i++) {
         printf("* arg #%d = %s\n", i, argv[i]);
     }
 
     return 0;
-}/*}}}*/
+} /*}}}*/

@@ -53,7 +53,7 @@ static struct argp_option options_time[] = {
 };
 
 static struct argp argp_time = {
-    options_time, &parser_run, "COMMAND", "Reserves the server for some time.",
+    options_time, &parser_time, "DURATION", "Reserves the server for some time.",
     NULL, NULL, NULL
 };
 
