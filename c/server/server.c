@@ -22,23 +22,26 @@ int make_soc_listen(const char *addr) { /*{{{*/
 
     soc_listen = socket(AF_UNIX, SOCK_STREAM, 0);
     if (soc_listen < 0) {
-        fprintf(stderr, "Failed to create UNIX socket.\n");
+        perror("socket");
         return -1;
     }
 
-    remove(socket_addr);
+    if (remove(addr) < 0) {
+        perror("remove");
+        return -1;
+    }
 
     sa_local.sun_family = AF_UNIX;
     strcpy(sa_local.sun_path, addr);
 
     if (bind(soc_listen, (struct sockaddr *)&sa_local,
              sizeof(struct sockaddr_un)) < 0) {
-        fprintf(stderr, "Failed to bind socket.\n");
+        perror("bind");
         return -1;
     }
 
     if (listen(soc_listen, LISTEN_QUEUE) < 0) {
-        fprintf(stderr, "Failed to listen on socket.\n");
+        perror("listen");
         return -1;
     }
 
@@ -46,15 +49,16 @@ int make_soc_listen(const char *addr) { /*{{{*/
 } /*}}}*/
 
 int handle_client(int soc_client) { /*{{{*/
-    char read_buf[JOB_SER_MAXLEN];
+    char read_buf[JOB_SER_MAXLEN] = {0};
+    job_descriptor job = {0};
+
     printf("[info] Client connected.\n");
 
     int bytes_read;
     if ((bytes_read = recv(soc_client, read_buf, JOB_SER_MAXLEN, 0)) == -1) {
-        fprintf(stderr, "Failed to read from client.\n");
+        perror("recv");
     }
 
-    job_descriptor job;
     if (deserialise_job(read_buf, bytes_read, &job) < 0) {
         printf("Failed to deserialise job.\n");
         close(soc_client);
@@ -84,8 +88,8 @@ int handle_client(int soc_client) { /*{{{*/
 
 int main(void) { /*{{{*/
     int soc_listen, soc_client;
-    unsigned int soc_len; /* Used to get length of sa_client in accept() */
     struct sockaddr_un sa_client = {0};
+    unsigned int soc_len = sizeof(sa_client);
 
     if ((soc_listen = make_soc_listen(socket_addr)) < 0) {
         return EXIT_FAILURE;
@@ -100,7 +104,7 @@ int main(void) { /*{{{*/
         printf("[info] Waiting for connection.\n");
         if ((soc_client = accept(soc_listen, (struct sockaddr *)&sa_client,
                                  &soc_len)) < 0) {
-            fprintf(stderr, "Failed to accept client.\n");
+            perror("accept");
             continue;
         }
 
