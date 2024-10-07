@@ -7,7 +7,10 @@
 
 const char *socket_addr = "/tmp/resman.sock";
 
-void free_job_descriptor(job_descriptor *job) { free(job->msg); }
+void free_job_descriptor(job_descriptor *job) {
+    free(job->msg);
+    free(job);
+}
 
 int ser32(char *b, uint32_t x) {
     for (int j = 3; j >= 0; j--) {
