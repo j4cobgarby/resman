@@ -28,11 +28,13 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
     }
 
     if (args.verbose) {
-        printf("Command (n=%d): ", args.n_cmd_args);
+        printf("Command (argc=%d): ", args.n_cmd_args);
+
         for (char **cmd_part = args.cmd; *cmd_part; cmd_part++) {
             printf("%s ", *cmd_part);
         }
         printf("\n");
+
         if (args.msg) {
             printf("Message: %s\n", args.msg);
         } else {
@@ -44,7 +46,7 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
     job.msg = args.msg;
     job.t_submitted = time(NULL);
     job.cmd.pid = getpid();
-    job.req_type = JOB_CMD;
+job.req_type = JOB_CMD;
 
     if ((ser_len = serialise_job(ser_buff, JOB_SER_MAXLEN, &job)) < 0) {
         fprintf(stderr, "[error] Failed to serialise job descriptor.\n");
@@ -76,12 +78,14 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
         return -1;
     }
 
-    if (args.verbose) printf("Waiting for signal.\n");
+    if (args.verbose) printf("\033[0;36m[info] Waiting for signal.\n\033[0m");
 
     if (sigwait(&sigset, &sig) != 0) {
         fprintf(stderr, "[error] Failed waiting for signal.\n");
         return -1;
     }
+
+    if (args.verbose) printf("\033[0;32m[info] Got signal, running!\033[0m\n");
 
     execvp(args.cmd[0], args.cmd);
 
@@ -91,6 +95,12 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
 
 int subcmd_time(int argc, char **argv) { /*{{{*/
     struct args_time args = {NULL, -1, 0};
+    job_descriptor job = {0};
+
+    int soc;
+
+    char ser_buff[JOB_SER_MAXLEN];
+    int ser_len;
 
     argp_parse(&argp_time, argc - 1, argv + 1, 0, 0, (void *)&args);
 
@@ -109,7 +119,27 @@ int subcmd_time(int argc, char **argv) { /*{{{*/
         }
     }
 
-    // TODO: Send time request to server.
+    job.msg = args.msg;
+    job.uid = getuid();
+    job.t_submitted = time(NULL);
+    job.t_ended = job.t_started = 0;
+    job.req_type = JOB_TIMESLOT;
+    job.timeslot.secs = args.seconds;
+
+    if ((ser_len = serialise_job(ser_buff, JOB_SER_MAXLEN, &job)) < 0) {
+        fprintf(stderr, "[error] Failed to serialise job descriptor.\n");
+        return -1;
+    }
+
+    if ((soc = connect_to_server(socket_addr)) < 0) {
+        fprintf(stderr, "[error] Failed to connect to daemon.\n");
+        return -1;
+    }
+
+    if (send(soc, ser_buff, ser_len, 0) < 0) {
+        perror("send");
+        return -1;
+    }
 
     return 0;
 } /*}}}*/
@@ -122,3 +152,4 @@ int subcmd_queue(int argc, char **argv) { /*{{{*/
 
     return 0;
 } /*}}}*/
+
