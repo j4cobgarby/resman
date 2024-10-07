@@ -46,7 +46,7 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
     job.msg = args.msg;
     job.t_submitted = time(NULL);
     job.cmd.pid = getpid();
-job.req_type = JOB_CMD;
+    job.req_type = JOB_CMD;
 
     if ((ser_len = serialise_job(ser_buff, JOB_SER_MAXLEN, &job)) < 0) {
         fprintf(stderr, "[error] Failed to serialise job descriptor.\n");
@@ -152,4 +152,3 @@ int subcmd_queue(int argc, char **argv) { /*{{{*/
 
     return 0;
 } /*}}}*/
-
