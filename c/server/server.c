@@ -22,10 +22,51 @@ job_descriptor *running_job = NULL;
  * be queued */
 job_descriptor *q = NULL;
 
-pthread_mutex_t mut_rj = PTHREAD_MUTEX_INITIALIZER;  // Mtx for running_job
-pthread_mutex_t mut_q = PTHREAD_MUTEX_INITIALIZER;   // Mtx for job queue
+/* Mutex for running_job */
+pthread_mutex_t mut_rj = PTHREAD_MUTEX_INITIALIZER;
 
-void *dispatcher(void *args UNUSED) {
+/* Mutex for job queue (q) */
+pthread_mutex_t mut_q = PTHREAD_MUTEX_INITIALIZER;
+
+int main(void) { /*{{{*/
+    int soc_listen, soc_client;
+    struct sockaddr_un sa_client = {0};
+    unsigned int soc_len = sizeof(sa_client);
+    pthread_t thr_dispatcher;
+
+    if ((soc_listen = make_soc_listen(socket_addr)) < 0) {
+        return EXIT_FAILURE;
+    }
+
+    if (signal(SIGINT, &sigint_handler) == SIG_ERR) {
+        perror("signal");
+        return EXIT_FAILURE;
+    }
+
+    if (pthread_create(&thr_dispatcher, NULL, &dispatcher, NULL) != 0) {
+        fprintf(stderr, "pthread_create failed!.\n");
+        return EXIT_FAILURE;
+    }
+
+    while (true) {
+        printf("[main] Waiting for connection.\n");
+        if ((soc_client = accept(soc_listen, (struct sockaddr *)&sa_client,
+                                 &soc_len)) < 0) {
+            perror("accept");
+            continue;
+        }
+
+        if (handle_client(soc_client) < 0) {
+            fprintf(stderr, "Failed while handling a client.\n");
+        }
+    }
+} /*}}}*/
+
+/* The dispatcher is responsible for polling the currently running job (if one
+ * exists) to check when it ends. When there is no job (the server is free,)
+ * then this function begins a new one.
+ * It's meant to be run as a thread. */
+void *dispatcher(void *args UNUSED) { /*{{{*/
     pid_t pid;
     job_descriptor *next_job;
     int is_running;
@@ -92,166 +133,9 @@ void *dispatcher(void *args UNUSED) {
             pthread_mutex_unlock(&mut_rj);
         }
     }
-}
-
-int main(void) { /*{{{*/
-    int soc_listen, soc_client;
-    struct sockaddr_un sa_client = {0};
-    unsigned int soc_len = sizeof(sa_client);
-    pthread_t thr_dispatcher;
-
-    if ((soc_listen = make_soc_listen(socket_addr)) < 0) {
-        return EXIT_FAILURE;
-    }
-
-    if (signal(SIGINT, &sigint_handler) == SIG_ERR) {
-        perror("signal");
-        return EXIT_FAILURE;
-    }
-
-    if (pthread_create(&thr_dispatcher, NULL, &dispatcher, NULL) != 0) {
-        fprintf(stderr, "pthread_create failed!.\n");
-        return EXIT_FAILURE;
-    }
-
-    while (true) {
-        printf("[main] Waiting for connection.\n");
-        if ((soc_client = accept(soc_listen, (struct sockaddr *)&sa_client,
-                                 &soc_len)) < 0) {
-            perror("accept");
-            continue;
-        }
-
-        if (handle_client(soc_client) < 0) {
-            fprintf(stderr, "Failed while handling a client.\n");
-        }
-    }
 } /*}}}*/
 
 void sigint_handler(int sig UNUSED) { /*{{{*/
     printf("Caught SIGINT: exiting.\n");
     exit(EXIT_SUCCESS);
-} /*}}}*/
-
-int make_soc_listen(const char *addr) { /*{{{*/
-    int soc_listen;
-    struct sockaddr_un sa_local = {0};
-
-    soc_listen = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (soc_listen < 0) {
-        perror("socket");
-        return -1;
-    }
-
-    remove(addr);
-
-    sa_local.sun_family = AF_UNIX;
-    strcpy(sa_local.sun_path, addr);
-
-    if (bind(soc_listen, (struct sockaddr *)&sa_local,
-             sizeof(struct sockaddr_un)) < 0) {
-        perror("bind");
-        return -1;
-    }
-
-    if (listen(soc_listen, LISTEN_QUEUE) < 0) {
-        perror("listen");
-        return -1;
-    }
-
-    return soc_listen;
-} /*}}}*/
-
-int handle_client(int soc_client) { /*{{{*/
-    char read_buf[JOB_SER_MAXLEN] = {0};
-    job_descriptor *job;
-    int n_jobs;
-
-    printf("[main] Client connected.\n");
-
-    int bytes_read;
-    if ((bytes_read = recv(soc_client, read_buf, JOB_SER_MAXLEN, 0)) == -1) {
-        perror("recv");
-    }
-
-    if ((job = (job_descriptor *)malloc(sizeof(job_descriptor))) == NULL) {
-        perror("malloc");
-    }
-
-    if (deserialise_job(read_buf, bytes_read, job) < 0) {
-        printf("Failed to deserialise job.\n");
-        close(soc_client);
-        return -1;
-    }
-
-    printf("== Job ==\n");
-    printf(
-        " * UID=%d\n"
-        " * Message=%s\n"
-        " * Submit time=%ld\n"
-        " * Run time=%ld\n"
-        " * End time=%ld\n",
-        job->uid, job->msg, job->t_submitted, job->t_started, job->t_ended);
-    if (job->req_type == JOB_CMD) {
-        printf(" * PID=%d\n", job->cmd.pid);
-    } else {
-        printf(" * Seconds=%d\n", job->timeslot.secs);
-    }
-    printf("=========\n");
-
-    switch (job->req_type) {
-        case JOB_CMD:
-            n_jobs = enq_job(&q, job);
-            printf("[main] Enqueued job. Now %d jobs in queue\n", n_jobs);
-            // TODO: Send confirmation to client
-            break;
-        case JOB_TIMESLOT:
-            if (peek_job(q, 0)) {
-                printf(
-                    "[main] User %d wanted a timeslot, but server is already "
-                    "reserved.\n",
-                    job->uid);
-                // TODO: Send message back to client
-            } else {
-                printf("[main] Requested timeslot reservation allowed.\n");
-                // TODO: Send message back to client
-            }
-            break;
-    }
-
-    close(soc_client);
-
-    return 0;
-} /*}}}*/
-
-const job_descriptor *peek_job(job_descriptor *q, int off) { /*{{{*/
-    for (int i = 0; i < off && q; i++, q = q->next)
-        ;
-
-    return q;
-} /*}}}*/
-
-job_descriptor *deq_job(job_descriptor **q) { /*{{{*/
-    job_descriptor *ret = *q;
-
-    *q = (ret ? ret->next : NULL);
-
-    return ret;
-} /*}}}*/
-
-int enq_job(job_descriptor **q, job_descriptor *job) { /*{{{*/
-    int i;
-
-    if (!*q) {
-        *q = job;
-        job->next = NULL;
-        return 1;
-    }
-
-    for (i = 1; (*q)->next; q = &(*q)->next, i++)
-        ;
-
-    (*q)->next = job;
-    job->next = NULL;
-    return i;
 } /*}}}*/
