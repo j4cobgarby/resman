@@ -10,12 +10,31 @@ from PyQt6.QtGui import (
     QPainter,
     QColor,
     QFontDatabase,
+    QPixmap,
 )
-from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtCore import QTimer, Qt, QRect
 
 
 class StatusIcon:
     def __init__(self, serv_addr: str, port: int, user: str, short_name: str):
+        self.serv_addr = serv_addr
+        self.port = port
+        self.user = user
+        self.short_name = short_name
+
+        self.client = paramiko.SSHClient()
+        self.client.load_system_host_keys()
+        self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        try:
+            self.client.connect(
+                hostname=self.serv_addr, username=self.user, port=self.port
+            )
+            print(f"Connected to {self.serv_addr}")
+        except Exception as e:
+            print(f"Remote connection failed to {self.serv_addr}: {e}")
+            return None
+
         self.tray_icon = QSystemTrayIcon(
             QIcon.fromTheme("preferences-system-time")
         )
@@ -41,64 +60,66 @@ class StatusIcon:
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.set_status)
-        self.timer.start(10000)
-
-        self.serv_addr = serv_addr
-        self.port = port
-        self.user = user
-        self.short_name = short_name
+        self.timer.start(20 * 1000)  # 20s
 
         self.set_status()
 
-    def overlay_status(self, icon_name: str, reserved: bool) -> QIcon:
-        base = QIcon.fromTheme(icon_name)
-        px = base.pixmap(64, 64)
-        rad = 20
-        colour = QColor(255, 0, 0) if reserved else QColor(0, 200, 0)
-        fnt = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-        fnt.setPointSize(22)
-        fnt.setBold(True)
+    def overlay_status(self, reserved: bool) -> QIcon:
+        pixmap = QPixmap(64, 64)
+        pixmap.fill(QColor(20, 20, 20))
+        indic_colour = QColor(255, 0, 0) if reserved else QColor(0, 200, 0)
+        indic_pad = 10
+        indic_height = 15
+        font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        font.setPointSize(22)
+        font.setBold(True)
 
-        painter = QPainter(px)
-        painter.setPen(QColor(255, 255, 255))
-        painter.setBrush(colour)
-        painter.drawEllipse(
-            px.width() // 2 - rad // 2, px.height() - rad - 5, rad, rad
+        painter = QPainter(pixmap)
+        painter.setBrush(indic_colour)
+        painter.setFont(font)
+
+        painter.setPen(indic_colour)
+        painter.drawRect(
+            QRect(
+                indic_pad,
+                pixmap.height() - indic_pad - indic_height,
+                pixmap.width() - 2 * indic_pad,
+                indic_height,
+            )
         )
 
-        painter.setFont(fnt)
         painter.setPen(QColor(255, 255, 255))
         painter.drawText(
-            px.rect().adjusted(0, 0, 0, -px.height() // 3),
+            pixmap.rect().adjusted(0, 0, 0, -pixmap.height() // 3),
             int(Qt.AlignmentFlag.AlignCenter),
             self.short_name,
         )
+
         painter.end()
 
-        return QIcon(px)
+        return QIcon(pixmap)
 
     def poll_server(self):
-        client = paramiko.SSHClient()
-        client.load_system_host_keys()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
         try:
-            client.connect(
-                hostname=self.serv_addr, username=self.user, port=self.port
-            )
-            stdin, stdout, stderr = client.exec_command("resman")
+            stdin, stdout, stderr = self.client.exec_command("resman")
             status = stdout.channel.recv_exit_status()
+            print(f"Got status={status} from {self.serv_addr}")
             return status
         except Exception as e:
             print(f"Remote poll failed: {e}")
-        finally:
-            client.close()
+            return None
 
-    def set_status(self, icn="preferences-system-network-server"):
-        resvd = self.poll_server() == 1
-        self.tray_icon.setIcon(self.overlay_status(icn, resvd))
+    def set_status(self):
+        status = self.poll_server()
+
+        if status is None:
+            self.tray_icon.setIcon(QIcon.fromTheme("preferences-system-time"))
+            self.tray_icon.setToolTip("Failed to poll...")
+            return
+
+        self.tray_icon.setIcon(self.overlay_status(status))
         self.tray_icon.setToolTip(
-            f"{'Reserved' if resvd else 'Free'} ({self.serv_addr}:{self.port})"
+            f"{'Reserved' if status == 1 else 'Free'} ({self.serv_addr}:{self.port})"
         )
 
     def open_terminal(self):
@@ -106,7 +127,7 @@ class StatusIcon:
             [
                 "xdg-terminal",
                 f"ssh {self.user}@{self.serv_addr} -p {self.port}",
-            ]
+            ],
         )
 
     def exit_app(self):
@@ -125,14 +146,14 @@ class StatusApp:
         # Reversed adding because, on my machine at least, this displays them
         # in the order they're given in the JSON file
         for host in reversed(host_info):
-            self.icns.append(
-                StatusIcon(
-                    host["addr"],
-                    host["port"],
-                    host["user"],
-                    host["short_name"],
-                )
+            icn = StatusIcon(
+                host["addr"],
+                host["port"],
+                host["user"],
+                host["short_name"],
             )
+            if icn:
+                self.icns.append(icn)
 
     def read_config(self):
         try:
