@@ -1,3 +1,8 @@
+COLOUR_GREEN=\033[0;32m
+COLOUR_RED=\033[0;31m
+COLOUR_BLUE=\033[0;36m
+COLOUR_END=\033[0m
+
 CC=clang
 CFLAGS=-Wall -Wextra -Wpedantic -Iinclude
 LD=clang
@@ -26,11 +31,13 @@ all: $(BUILD)/resmand $(BUILD)/resman
 
 $(BUILD)/$(SERVER_EXE): $(OBJS_SERVER)
 	@mkdir -p $(dir $@)
-	$(LD) $(LDFLAGS) $^ -o $@
+	@echo -e "$(COLOUR_GREEN)$(LD): $^$(COLOUR_END)"
+	@$(LD) $(LDFLAGS) $^ -o $@
 
 $(BUILD)/$(CLIENT_EXE): $(OBJS_CLIENT)
 	@mkdir -p $(dir $@)
-	$(LD) $(LDFLAGS) $^ -o $@
+	@echo -e "$(COLOUR_GREEN)$(LD): $^$(COLOUR_END)"
+	@$(LD) $(LDFLAGS) $^ -o $@
 
 .PHONY: clean
 clean:
@@ -38,4 +45,5 @@ clean:
 
 $(BUILD)/%.c.o: %.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c -o $@ $<
+	@echo -e "$(COLOUR_BLUE)$(CC): $<$(COLOUR_END)"
+	@$(CC) $(CFLAGS) -c -o $@ $<

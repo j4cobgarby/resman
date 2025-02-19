@@ -39,7 +39,8 @@ resman q <n> # Alternative to queue
 # Client wants to run a job
 
 1) Client program opens a connection to the server's socket
-2) Client sends a job request and then waits for a signal
+2) Client sends a serialised job_descriptor
+3) Server replies with a serialised queue_info
 3) Server receives the request and adds it to the queue
 3) When the server is ready to run that job, it sends a SIGUSR1 to the client
 4) Client wakes up, and then replaces its process image with the job that the

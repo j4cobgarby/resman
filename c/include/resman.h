@@ -45,13 +45,19 @@ typedef struct job_descriptor {
     };
 } job_descriptor;
 
-typedef struct {
+typedef struct info_request {
     /* On request: max num jobs to query from queue
      * On response: how many total jobs in queue (maybe less than returned) */
     int n_jobs;
     /* First job in response linked list */
     job_descriptor *first_job;
 } info_request;
+
+typedef struct queue_info {
+    /* How many jobs queued up */
+    unsigned int queue_length;
+} queue_info;
+
 /*}}}*/
 
 void free_job_descriptor(job_descriptor *job);
