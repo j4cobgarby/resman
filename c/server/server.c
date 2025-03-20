@@ -15,12 +15,12 @@
 #include "resman.h"
 
 /* The currently executing job, or NULL if no job is currently running. */
-job_descriptor *running_job = NULL;
+queued_job *running_job = NULL;
 
 /* Queue for jobs to run, not including the one which is currently running.
  * Only includes actual jobs, not timeslot reservations, since those can't
  * be queued */
-job_descriptor *q = NULL;
+queued_job *q = NULL;
 
 /* Mutex for running_job */
 pthread_mutex_t mut_rj = PTHREAD_MUTEX_INITIALIZER;
@@ -68,7 +68,7 @@ int main(void) { /*{{{*/
  * It's meant to be run as a thread. */
 void *dispatcher(void *args UNUSED) { /*{{{*/
     pid_t pid;
-    job_descriptor *next_job;
+    queued_job *next_job;
     int is_running;
 
     while (true) {
@@ -81,8 +81,8 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
         if (is_running) {
             /* There is a currently running job. */
 
-            assert(running_job->req_type == JOB_CMD);
-            pid = running_job->cmd.pid;
+            assert(running_job->job.job_type == JOB_CMD);
+            pid = running_job->job.cmd.pid;
 
             if (kill(pid, 0) == 0) {
                 /* Job is still alive, just wait. */
@@ -92,7 +92,7 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
                 printf("[dispatcher] Job has ended!\n");
                 /* TODO: Here we could add the finished job to a persistent database */
                 pthread_mutex_lock(&mut_rj);
-                free_job_descriptor(running_job);
+                free_queued_job(running_job);
                 running_job = NULL;
                 pthread_mutex_unlock(&mut_rj);
 
@@ -115,23 +115,23 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
             pthread_mutex_unlock(&mut_rj);
 
             if (running_job) {
-                switch (running_job->req_type) {
+                switch (running_job->job.job_type) {
                     case JOB_CMD:
                         printf("[dispatcher] Dequeued cmd job %d, sending signal.\n",
-                            running_job->cmd.pid);
+                            running_job->job.cmd.pid);
 
                         /* Tell the waiting job stub to start the desired process */
-                        kill(running_job->cmd.pid, SIGUSR1);
+                        kill(running_job->job.cmd.pid, SIGUSR1);
                         break;
                     case JOB_TIMESLOT:
                         printf("[dispatcher] Dequeued time slot request.\n");
-                        printf("\tSleep for %d seconds\n", running_job->timeslot.secs);
-                        sleep(running_job->timeslot.secs);
+                        printf("\tSleep for %d seconds\n", running_job->job.timeslot.secs);
+                        sleep(running_job->job.timeslot.secs);
                         printf("Sleep over.\n");
                         running_job = NULL;
                         break;
                     default:
-                        fprintf(stderr, "Malformed job type: %d\n", running_job->req_type);
+                        fprintf(stderr, "Malformed job type: %d\n", running_job->job.job_type);
                 }
             }
         }
@@ -142,3 +142,7 @@ void sigint_handler(int sig UNUSED) { /*{{{*/
     printf("Caught SIGINT: exiting.\n");
     exit(EXIT_SUCCESS);
 } /*}}}*/
+
+void free_queued_job(queued_job *qjob) {
+    free(qjob);
+}

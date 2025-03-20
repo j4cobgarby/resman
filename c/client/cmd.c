@@ -17,7 +17,8 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
     int sig;
 
     job_descriptor job;
-    char ser_buff[JOB_SER_MAXLEN];
+    ipc_request req;
+    char ser_buff[sizeof(req)];
     int ser_len;
 
     argp_parse(&argp_run, argc - 1, argv + 1, 0, 0, (void *)&args);
@@ -42,17 +43,29 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
         }
     }
 
-    job.uid = getuid();
-    job.msg = args.msg;
-    job.t_submitted = time(NULL);
-    job.t_started = job.t_ended = 0;
-    job.cmd.pid = getpid();
-    job.req_type = JOB_CMD;
-
-    if ((ser_len = serialise_job(ser_buff, JOB_SER_MAXLEN, &job)) < 0) {
-        fprintf(stderr, "[error] Failed to serialise job descriptor.\n");
-        return -1;
+    if (strlen(args.msg) > JOB_MSG_LEN) {
+        printf(
+            "You have specified a message longer than the maximum of %d, so it "
+            "will be truncated.\n",
+            JOB_MSG_LEN);
     }
+
+    job.uid = getuid();
+    job.t_submitted = time(NULL);
+    job.cmd.pid = getpid();
+    job.job_type = JOB_CMD;
+
+    if (args.msg) {
+        strncpy(job.msg, args.msg, JOB_MSG_LEN);
+    } else {
+        strcpy(job.msg, "(No message)");
+    }
+
+    req.req_type = IPCREQ_JOB;
+    req.job = job;
+
+    ser_len = sizeof(req);
+    memcpy(ser_buff, &req, sizeof(req));
 
     if ((soc = connect_to_server(socket_addr)) < 0) {
         fprintf(stderr, "[error] Failed to connect to daemon.\n");
@@ -90,17 +103,20 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
 
     execvp(args.cmd[0], args.cmd);
 
-    fprintf(stderr, "[error] Failed to execute your command! Double check the executable name/permissions.\n");
+    fprintf(stderr,
+            "[error] Failed to execute your command! Double check the "
+            "executable name/permissions.\n");
     return -1;
 } /*}}}*/
 
 int subcmd_time(int argc, char **argv) { /*{{{*/
     struct args_time args = {NULL, -1, 0};
     job_descriptor job = {0};
+    ipc_request req;
 
     int soc;
 
-    char ser_buff[JOB_SER_MAXLEN];
+    char ser_buff[sizeof(req)];
     int ser_len;
 
     argp_parse(&argp_time, argc - 1, argv + 1, 0, 0, (void *)&args);
@@ -120,17 +136,22 @@ int subcmd_time(int argc, char **argv) { /*{{{*/
         }
     }
 
-    job.msg = args.msg;
     job.uid = getuid();
     job.t_submitted = time(NULL);
-    job.t_ended = job.t_started = 0;
-    job.req_type = JOB_TIMESLOT;
+    job.job_type = JOB_TIMESLOT;
     job.timeslot.secs = args.seconds;
 
-    if ((ser_len = serialise_job(ser_buff, JOB_SER_MAXLEN, &job)) < 0) {
-        fprintf(stderr, "[error] Failed to serialise job descriptor.\n");
-        return -1;
+    if (args.msg) {
+        strncpy(job.msg, args.msg, JOB_MSG_LEN);
+    } else {
+        strcpy(job.msg, "(No message)");
     }
+
+    req.req_type = IPCREQ_JOB;
+    req.job = job;
+
+    ser_len = sizeof(req);
+    memcpy(ser_buff, &req, sizeof(req));
 
     if ((soc = connect_to_server(socket_addr)) < 0) {
         fprintf(stderr, "[error] Failed to connect to daemon.\n");
@@ -145,10 +166,26 @@ int subcmd_time(int argc, char **argv) { /*{{{*/
     return 0;
 } /*}}}*/
 
-int subcmd_queue(int argc, char **argv) { /*{{{*/
-    printf("subcommand queue\n");
-    for (int i = 0; i < argc; i++) {
-        printf("* arg #%d = %s\n", i, argv[i]);
+int subcmd_queue(int argc UNUSED, char **argv UNUSED) { /*{{{*/
+    info_request info = {0};
+    ipc_request req;
+    char ser_buff[sizeof(req)];
+    int soc;
+
+    info.n_view = 5;
+    req.req_type = IPCREQ_VIEW_QUEUE;
+    req.info = info;
+
+    memcpy(ser_buff, &req, sizeof(req));
+
+    if ((soc = connect_to_server(socket_addr)) < 0) {
+        fprintf(stderr, "[error] Failed to connect to daemon.\n");
+        return -1;
+    }
+
+    if (send(soc, ser_buff, sizeof(req), 0) < 0) {
+        perror("send");
+        return -1;
     }
 
     return 0;

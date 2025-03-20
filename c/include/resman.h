@@ -17,17 +17,24 @@ extern const char *socket_addr;
 /* Max size of message plus rest of fields */
 #define JOB_SER_MAXLEN (255 + JOB_SER_BASELEN)
 
+#define JOB_MSG_LEN 256
+
 enum job_type {
     JOB_CMD,
     JOB_TIMESLOT,
 };
 
+enum ipc_request_type {
+    IPCREQ_JOB,
+    IPCREQ_VIEW_QUEUE,
+};
+
 typedef struct job_descriptor {
     uid_t uid; // User who submitted job
     time_t t_submitted; // Time job was sent to resman
-    char *msg; // Explanatory message
+    char msg[JOB_MSG_LEN];
 
-    enum job_type req_type;
+    enum job_type job_type;
     union {
         struct {
             pid_t pid; // Job stub PID
@@ -36,25 +43,24 @@ typedef struct job_descriptor {
             unsigned int secs; // Seconds to reserve
         } timeslot;
     };
-
-    /* Only used by server: */
-    time_t t_started; // Time that job begun
-    time_t t_ended; // Time that job ended
-    struct job_descriptor *next; // Next job in list
 } job_descriptor;
 
 typedef struct info_request {
-    /* On request: max num jobs to query from queue
-     * On response: how many total jobs returned (maybe less than requested) */
-    int n_jobs;
-    /* First job in response linked list */
-    job_descriptor *first_job;
+    int n_view;
 } info_request;
 
 typedef struct queue_info {
     /* How many jobs queued up */
     unsigned int queue_length;
 } queue_info;
+
+typedef struct ipc_request {
+    enum ipc_request_type req_type;
+    union {
+        job_descriptor job;
+        info_request info;
+    };
+} ipc_request;
 
 /*}}}*/
 
