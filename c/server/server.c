@@ -81,29 +81,22 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
         if (is_running) {
             /* There is a currently running job. */
 
-            pthread_mutex_lock(&mut_rj);
-
-            if (running_job->req_type == JOB_CMD) {
-                pid = running_job->cmd.pid;
-                pthread_mutex_unlock(&mut_rj);
-            } else {
-                /* Current job is not a command, but a timeslot */
-                pthread_mutex_unlock(&mut_rj);
-                continue;
-            }
+            assert(running_job->req_type == JOB_CMD);
+            pid = running_job->cmd.pid;
 
             if (kill(pid, 0) == 0) {
-                /* Job still lives */
+                /* Job is still alive, just wait. */
                 continue;
             } else if (errno == ESRCH) {
                 /* The job has ended */
                 printf("[dispatcher] Job has ended!\n");
+                /* TODO: Here we could add the finished job to a persistent database */
                 pthread_mutex_lock(&mut_rj);
                 free_job_descriptor(running_job);
                 running_job = NULL;
                 pthread_mutex_unlock(&mut_rj);
 
-                goto try_start;
+                goto try_start; // Skip the timeout to try to start a new job.
             } else {
                 perror("kill");
                 exit(EXIT_FAILURE);
@@ -113,24 +106,34 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
         try_start:
             pthread_mutex_lock(&mut_q);
             /* Get the next job in the queue. This can be NULL, but that's
-             * okay. */
+             * okay; just means the queue was empty. */
             next_job = deq_job(&q);
             pthread_mutex_unlock(&mut_q);
 
             pthread_mutex_lock(&mut_rj);
             running_job = next_job;
-            if (running_job) {
-                /* This should be the case, because only CMD jobs should be in
-                 * the queue. If not, there's a bug. */
-                assert(running_job->req_type == JOB_CMD);
-
-                printf("[dispatcher] Got job %d, sending signal.\n",
-                       running_job->cmd.pid);
-
-                /* Tell the waiting job stub to start the desired process */
-                kill(running_job->cmd.pid, SIGUSR1);
-            }
             pthread_mutex_unlock(&mut_rj);
+
+            if (running_job) {
+                switch (running_job->req_type) {
+                    case JOB_CMD:
+                        printf("[dispatcher] Dequeued cmd job %d, sending signal.\n",
+                            running_job->cmd.pid);
+
+                        /* Tell the waiting job stub to start the desired process */
+                        kill(running_job->cmd.pid, SIGUSR1);
+                        break;
+                    case JOB_TIMESLOT:
+                        printf("[dispatcher] Dequeued time slot request.\n");
+                        printf("\tSleep for %d seconds\n", running_job->timeslot.secs);
+                        sleep(running_job->timeslot.secs);
+                        printf("Sleep over.\n");
+                        running_job = NULL;
+                        break;
+                    default:
+                        fprintf(stderr, "Malformed job type: %d\n", running_job->req_type);
+                }
+            }
         }
     }
 } /*}}}*/

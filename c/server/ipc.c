@@ -96,6 +96,7 @@ int handle_client(int soc_client) { /*{{{*/
                     job->uid);
                 // TODO: Send message back to client
             } else {
+                n_jobs = enq_job(&q, job);
                 printf("[main] Requested timeslot reservation allowed.\n");
                 // TODO: Send message back to client
             }

@@ -23,31 +23,29 @@ enum job_type {
 };
 
 typedef struct job_descriptor {
-    /* Next job in linked list */
-    struct job_descriptor *next;
-    uid_t uid;
-
-    time_t t_submitted;
-    time_t t_started;
-    time_t t_ended;
-
-    char *msg;
+    uid_t uid; // User who submitted job
+    time_t t_submitted; // Time job was sent to resman
+    char *msg; // Explanatory message
 
     enum job_type req_type;
     union {
         struct {
-            /* PID to signal when it's time to start job */
-            pid_t pid;
+            pid_t pid; // Job stub PID
         } cmd;
         struct {
-            unsigned int secs;
+            unsigned int secs; // Seconds to reserve
         } timeslot;
     };
+
+    /* Only used by server: */
+    time_t t_started; // Time that job begun
+    time_t t_ended; // Time that job ended
+    struct job_descriptor *next; // Next job in list
 } job_descriptor;
 
 typedef struct info_request {
     /* On request: max num jobs to query from queue
-     * On response: how many total jobs in queue (maybe less than returned) */
+     * On response: how many total jobs returned (maybe less than requested) */
     int n_jobs;
     /* First job in response linked list */
     job_descriptor *first_job;

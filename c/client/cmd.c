@@ -45,6 +45,7 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
     job.uid = getuid();
     job.msg = args.msg;
     job.t_submitted = time(NULL);
+    job.t_started = job.t_ended = 0;
     job.cmd.pid = getpid();
     job.req_type = JOB_CMD;
 
@@ -89,7 +90,7 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
 
     execvp(args.cmd[0], args.cmd);
 
-    fprintf(stderr, "[error] Failed to execute your command!\n");
+    fprintf(stderr, "[error] Failed to execute your command! Double check the executable name/permissions.\n");
     return -1;
 } /*}}}*/
 
