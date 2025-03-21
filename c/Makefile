@@ -4,7 +4,7 @@ COLOUR_BLUE=\033[0;36m
 COLOUR_END=\033[0m
 
 CC=clang
-CFLAGS=-Wall -Wextra -Wpedantic -Iinclude -g -O0
+CFLAGS=-Wall -Wextra -Wpedantic -Iinclude
 LD=clang
 LDFLAGS=
 

@@ -90,13 +90,14 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
             } else if (errno == ESRCH) {
                 /* The job has ended */
                 printf("[dispatcher] Job has ended!\n");
-                /* TODO: Here we could add the finished job to a persistent database */
+                /* TODO: Here we could add the finished job to a persistent
+                 * database */
                 pthread_mutex_lock(&mut_rj);
                 free_queued_job(running_job);
                 running_job = NULL;
                 pthread_mutex_unlock(&mut_rj);
 
-                goto try_start; // Skip the timeout to try to start a new job.
+                goto try_start;  // Skip the timeout to try to start a new job.
             } else {
                 perror("kill");
                 exit(EXIT_FAILURE);
@@ -117,32 +118,88 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
             if (running_job) {
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
-                        printf("[dispatcher] Dequeued cmd job %d, sending signal.\n",
+                        printf(
+                            "[dispatcher] Dequeued cmd job %d, sending "
+                            "signal.\n",
                             running_job->job.cmd.pid);
 
-                        /* Tell the waiting job stub to start the desired process */
+                        /* Tell the waiting job stub to start the desired
+                         * process */
                         kill(running_job->job.cmd.pid, SIGUSR1);
                         break;
                     case JOB_TIMESLOT:
                         printf("[dispatcher] Dequeued time slot request.\n");
-                        printf("\tSleep for %d seconds\n", running_job->job.timeslot.secs);
+                        printf("\tSleep for %d seconds\n",
+                               running_job->job.timeslot.secs);
                         sleep(running_job->job.timeslot.secs);
                         printf("Sleep over.\n");
                         running_job = NULL;
                         break;
                     default:
-                        fprintf(stderr, "Malformed job type: %d\n", running_job->job.job_type);
+                        fprintf(stderr, "Malformed job type: %d\n",
+                                running_job->job.job_type);
                 }
             }
         }
     }
 } /*}}}*/
 
+int send_queue_info(int soc_client, unsigned int count) {
+    pthread_mutex_lock(&mut_q);
+    pthread_mutex_lock(&mut_rj);
+
+    int qlen = 0;
+    queued_job *qjob;
+    if (q) {
+        for (qlen = 1, qjob = q; qjob->next; qjob = qjob->next, qlen++)
+            ;
+    }
+
+    queue_info_response_header header;
+    header.total_count = qlen + (running_job ? 1 : 0);
+    header.resp_count = header.total_count > count ? count : header.total_count;
+    header.currently_running = !!running_job;
+
+    const unsigned long buf_len =
+        sizeof(header) + header.resp_count * sizeof(job_descriptor);
+    char *ser_buf = malloc(buf_len);
+    if (!ser_buf) goto fail;
+
+    memcpy(ser_buf, &header, sizeof(header));
+    int pos = sizeof(header);
+    unsigned int i = 0;
+    if (running_job) {
+        memcpy(ser_buf + pos, &running_job->job, sizeof(job_descriptor));
+        pos += sizeof(job_descriptor);
+        i += 1;
+    }
+    for (qjob = q; i < header.resp_count && qjob; qjob = qjob->next, i++) {
+        memcpy(ser_buf + pos, &qjob->job, sizeof(job_descriptor));
+        pos += sizeof(job_descriptor);
+    }
+    pthread_mutex_unlock(&mut_q);
+    pthread_mutex_unlock(&mut_rj);
+
+    printf("Final pos = %d. This should be equal to %lu\n", pos, buf_len);
+
+    if (send(soc_client, ser_buf, buf_len, 0) < 0) {
+        perror("[error] Failed sending queue response.\n");
+        free(ser_buf);
+        return -1;
+    }
+
+    free(ser_buf);
+    printf("Sent response back to client.\n");
+    return 0;
+fail:
+    pthread_mutex_unlock(&mut_q);
+    pthread_mutex_unlock(&mut_rj);
+    return -1;
+}
+
 void sigint_handler(int sig UNUSED) { /*{{{*/
     printf("Caught SIGINT: exiting.\n");
     exit(EXIT_SUCCESS);
 } /*}}}*/
 
-void free_queued_job(queued_job *qjob) {
-    free(qjob);
-}
+void free_queued_job(queued_job *qjob) { free(qjob); }

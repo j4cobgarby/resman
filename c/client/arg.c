@@ -6,8 +6,8 @@
 #include "client.h"
 
 void print_subcmds(char *prog) { /*{{{*/
-    fprintf(stderr, "Usage: %s [subcommand] <options>\n", prog);
-    fprintf(stderr, "Valid subcommands: [r]un, [t]ime, [q]ueue\n");
+    fprintf(stderr, "Usage: %s SUBCOMMAND [OPTION...]\n", prog);
+    fprintf(stderr, "Valid subcommands: [r]un, [t]ime, [c]heck, [d]equeue\n");
 } /*}}}*/
 
 static unsigned int parse_duration(const char *s) { /*{{{*/
@@ -78,8 +78,7 @@ error_t parser_run(int key, char *arg, struct argp_state *state) { /*{{{*/
             break;
         case ARGP_KEY_END:
             if (state->arg_num == 0) {
-                fprintf(stderr, "Expected COMMAND.\n");
-                return ARGP_ERR_UNKNOWN;
+                argp_usage(state);
             }
         default:
             return ARGP_ERR_UNKNOWN;
@@ -101,17 +100,18 @@ error_t parser_time(int key, char *arg, struct argp_state *state) { /*{{{*/
             break;
         case ARGP_KEY_ARG:
             if (state->arg_num == 0) {
-                args->seconds = parse_duration(arg);
-                printf("Parsed: %d\n", args->seconds);
+                int dur = parse_duration(arg);
+                if (dur == -1) {
+                    argp_error(state, "Invalid duration format: '%s'n", arg);
+                }
+                args->seconds = dur;
                 break;
             } else {
-                // Too many args
-                return ARGP_ERR_UNKNOWN;
+                argp_usage(state);
             }
         case ARGP_KEY_END:
             if (state->arg_num == 0) {
-                fprintf(stderr, "Expected DURATION.\n");
-                return ARGP_ERR_UNKNOWN;
+                argp_usage(state);
             }
         default:
             return ARGP_ERR_UNKNOWN;
@@ -120,6 +120,58 @@ error_t parser_time(int key, char *arg, struct argp_state *state) { /*{{{*/
     return 0;
 } /*}}}*/
 
-error_t parser_queue(int key, char *arg, struct argp_state *state) { /*{{{*/
+error_t parser_check(int key, char *arg, struct argp_state *state) { /*{{{*/
+    struct args_check *args = (struct args_check *)state->input;
+    char *end;
+
+    switch (key) {
+        case 'V':
+            printf("[info] Verbose mode enabled.\n");
+            args->verbose = 1;
+            break;
+        case 'n':
+            errno = 0;
+            args->n = strtol(arg, &end, 10);
+            if (errno == ERANGE || end == arg) {
+                argp_error(state, "Invalid count: '%s'", arg);
+            }
+            break;
+        case ARGP_KEY_ARG:
+        case ARGP_KEY_END:
+        default:
+            return ARGP_ERR_UNKNOWN;
+    }
+
+    return 0;
+} /*}}}*/
+
+error_t parser_dequeue(int key, char *arg, struct argp_state *state) { /*{{{*/
+    struct args_dequeue *args = (struct args_dequeue *)state->input;
+    char *end;
+
+    switch (key) {
+        case 'V':
+            printf("[info] Verbose mode enabled.\n");
+            args->verbose = 1;
+            break;
+        case ARGP_KEY_ARG:
+            if (state->arg_num == 0) {
+                errno = 0;
+                args->job_id = strtoul(arg, &end, 10);
+                if (errno == ERANGE || end == arg) {
+                    argp_error(state, "Invalid job id format: '%s'", arg);
+                }
+            } else {
+                argp_usage(state);
+            }
+            break;
+        case ARGP_KEY_END:
+            if (state->arg_num == 0) {
+                argp_usage(state);
+            }
+        default:
+            return ARGP_ERR_UNKNOWN;
+    }
+
     return 0;
 } /*}}}*/

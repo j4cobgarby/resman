@@ -1,5 +1,6 @@
 // vim: fdm=marker
 #include <stdlib.h>
+#include "resman.h"
 #include "server.h"
 
 /* Take a pointer to the job at the front of the queue, without removing it.
@@ -20,6 +21,23 @@ queued_job *deq_job(queued_job **q) { /*{{{*/
 
     return ret;
 } /*}}}*/
+
+/* Remove a job from the middle of the queue with a given UUID. */
+queued_job *remove_job(queued_job **q, uuid_t uuid) {/*{{{*/
+    queued_job *ret = *q;
+    queued_job *prev = NULL;
+
+    for (; ret; ret = ret->next) {
+        if (uuid == ret->job.job_uuid) {
+            if (prev) prev->next = ret->next;
+            else *q = ret->next;
+            return ret;
+        }
+        prev = ret;
+    }
+
+    return NULL; /* Not found */
+}/*}}}*/
 
 /* Pushes a new job to the back of the queue.
  * Returns the new length of the queue. */

@@ -16,12 +16,15 @@ int main(int argc, char **argv) { /*{{{*/
         return EXIT_FAILURE;
     }
 
-    if (!strcmp(argv[1], "run") || !strcmp(argv[1], "r")) {
+    if (!strcmp(argv[1], "run") || !strcmp(argv[1], "r") ||
+        !strcmp(argv[1], "x")) {
         return subcmd_run(argc, argv);
     } else if (!strcmp(argv[1], "time") || !strcmp(argv[1], "t")) {
         return subcmd_time(argc, argv);
-    } else if (!strcmp(argv[1], "queue") || !strcmp(argv[1], "q")) {
-        return subcmd_queue(argc, argv);
+    } else if (!strcmp(argv[1], "check") || !strcmp(argv[1], "c")) {
+        return subcmd_check(argc, argv);
+    } else if (!strcmp(argv[1], "dequeue") || !strcmp(argv[1], "d")) {
+        return subcmd_dequeue(argc, argv);
     } else if (!strcmp(argv[1], "version") || !strcmp(argv[1], "v")) {
         printf("Resman client version " CLIENT_VER_STRING ".\n");
     } else {
