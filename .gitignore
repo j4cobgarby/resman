@@ -1,17 +1,17 @@
-# Byte-compiled / optimized / DLL files
+build
+*.vim
+compile_commands.json
+
 __pycache__/
 
-# Distribution / packaging
 *.egg-info/
 
-# Virtual environments
+.idea/
+
 .env
 .venv
 env/
 venv/
-
-# Pycharm
-.idea/
 
 # KDE directory preferences
 .directory
