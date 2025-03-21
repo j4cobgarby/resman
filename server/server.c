@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <systemd/sd-journal.h>
 
 #include "resman.h"
 
@@ -33,6 +34,8 @@ int main(void) { /*{{{*/
     struct sockaddr_un sa_client = {0};
     unsigned int soc_len = sizeof(sa_client);
     pthread_t thr_dispatcher;
+
+    sd_journal_print(LOG_INFO, "== Resman daemon ==");
 
     if ((soc_listen = make_soc_listen(socket_addr)) < 0) {
         return EXIT_FAILURE;
@@ -89,7 +92,7 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
                 continue;
             } else if (errno == ESRCH) {
                 /* The job has ended */
-                printf("[dispatcher] Job has ended!\n");
+                sd_journal_print(LOG_INFO, "job finished, uuid=%d", running_job->job.job_uuid);
                 /* TODO: Here we could add the finished job to a persistent
                  * database */
                 pthread_mutex_lock(&mut_rj);

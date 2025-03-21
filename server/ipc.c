@@ -54,9 +54,6 @@ static int send_status(int soc, status_response *resp) {/*{{{*/
 /* Handle a new client connection. This will wait for the client to send a
  * request, at which point -- based on the type of request -- it will perform
  * the necessary action.
- * If the client wants to enqueue a job, then it does that. If the client wants
- * to reserve the server for some time, this will check if the server is free
- * right now and, if so, allow the reservation.
  * Returns -1 on failure, or 0 on success. */
 int handle_client(int soc_client) { /*{{{*/
     ipc_request req;
@@ -100,25 +97,26 @@ int handle_client(int soc_client) { /*{{{*/
                 n_jobs = enq_job(&q, job);
                 pthread_mutex_unlock(&mut_q);
                 printf("[main] Enqueued job. Now %d jobs in queue\n", n_jobs);
-                // TODO: Send confirmation to client
+                resp.status = STATUS_OK;
                 break;
             case JOB_TIMESLOT:
-                if (peek_job(q, 0)) {
+                if (running_job || peek_job(q, 0)) {
                     printf(
                         "[main] User %d wanted a timeslot, but server is "
                         "already "
                         "reserved.\n",
                         job.uid);
-                    // TODO: Send message back to client
+                    resp.status = STATUS_FAIL;
                 } else {
                     pthread_mutex_lock(&mut_q);
                     n_jobs = enq_job(&q, job);
                     pthread_mutex_unlock(&mut_q);
-                    printf("[main] Requested timeslot reservation allowed.\n");
-                    // TODO: Send message back to client
+                    resp.status = STATUS_OK;
                 }
                 break;
         }
+
+        send_status(soc_client, &resp);
     } else if (req.req_type == IPCREQ_VIEW_QUEUE) {
         info_request info = req.info;
         printf("== Info Request ==\n");

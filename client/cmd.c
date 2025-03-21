@@ -36,6 +36,7 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
 
     job_descriptor job;
     ipc_request req;
+    status_response resp;
 
     argp_parse(&argp_run, argc - 1, argv + 1, 0, 0, (void *)&args);
 
@@ -90,6 +91,16 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
         return -1;
     }
 
+    if (get_status(soc, &resp) < 0) {
+        perror("get_status");
+        return -1;
+    }
+
+    if (resp.status != STATUS_OK) {
+        fprintf(stderr, "Failed to enqueue job.\n");
+        return -1;
+    }
+
     if (sigemptyset(&sigset) < 0) {
         perror("sigemptyset");
         return -1;
@@ -132,6 +143,7 @@ int subcmd_time(int argc, char **argv) { /*{{{*/
     struct args_time args = {NULL, -1, 0};
     job_descriptor job = {0};
     ipc_request req;
+    status_response resp;
 
     int soc;
 
@@ -173,6 +185,16 @@ int subcmd_time(int argc, char **argv) { /*{{{*/
 
     if (send_ipc_request(soc, &req) < 0) {
         perror("send");
+        return -1;
+    }
+
+    if (get_status(soc, &resp) < 0) {
+        perror("get_status");
+        return -1;
+    }
+
+    if (resp.status != STATUS_OK) {
+        fprintf(stderr, "Could not reserve time slot. Queuing time slots does not make sense, semantically.\n");
         return -1;
     }
 
