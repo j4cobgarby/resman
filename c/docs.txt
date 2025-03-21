@@ -1,0 +1,49 @@
+-- Job Serialisation Format --
+
+ * All values are in little-endian
+
+| n bytes | Value 
+|---------|--------
+| 1       | Job type (0 => cmd, 1 => timeslot)
+| 4       | UID that submitted the job
+| 8       | UNIX timestamp of submission time
+| 8       | UNIX timestamp of job start time
+| 8       | UNIX timestamp of job end time
+|---(only for cmd type jobs)---
+| 4       | Job PID
+|---(only for timeslot type jobs)---
+| 4       | Seconds to reserve
+|---(for every type...)
+| 1       | Number of bytes in message
+| variable| Message about job
+|---------|--------
+
+-- Client CLI syntax --
+
+# Queueing a command
+resman run `some_command`
+resman run -m "Running a job" `some_command`
+
+# Reserving for certain time
+# Note this only goes through if there's nothing in the queue, as it doesn't
+# make much sense to queue a time reservation.
+resman time 30m
+
+# Checking queue status
+resman # Overview: current status, queue length
+resman queue <n> # Queue detail (first n items)
+resman q <n> # Alternative to queue
+
+-- Overview of protocol --
+
+# Client wants to run a job
+
+1) Client program opens a connection to the server's socket
+2) Client sends a serialised job_descriptor
+3) Server replies with a serialised queue_info
+3) Server receives the request and adds it to the queue
+3) When the server is ready to run that job, it sends a SIGUSR1 to the client
+4) Client wakes up, and then replaces its process image with the job that the
+     user wanted.
+5) Server monitors the job PID; when it finishes, the next job in the queue is
+     run.
