@@ -43,14 +43,13 @@ int make_soc_listen(const char *addr) { /*{{{*/
 static uuid_t next_uuid(void) { /*{{{*/
     static uuid_t next = 0;
     if (next == UUID_MAX) next = 0;
-    return next++;
+    return ++next;
 } /*}}}*/
 
-static int send_status(int soc, status_response *resp) {
+static int send_status(int soc, status_response *resp) {/*{{{*/
     if (!resp) return -1;
-    printf("Sending status = %d\n", resp->status);
     return send(soc, resp, sizeof(status_response), 0);
-}
+}/*}}}*/
 
 /* Handle a new client connection. This will wait for the client to send a
  * request, at which point -- based on the type of request -- it will perform
