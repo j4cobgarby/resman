@@ -1,9 +1,16 @@
 // vim: fdm=marker
 #include "resman.h"
 #include <pthread.h> /* pthread_mutex_* */
+#include <systemd/sd-journal.h>
+#include <sys/syslog.h>
 
 #define LISTEN_QUEUE 8
 #define POLL_DELAY 2
+
+#define RESMAND_INFO(...) \
+    sd_journal_print(LOG_INFO, __VA_ARGS__)
+#define RESMAND_ERROR(...) \
+    sd_journal_print(LOG_ERR, __VA_ARGS__)
 
 /* Thin wrapper around job descriptor for server-only fields */
 typedef struct queued_job {
