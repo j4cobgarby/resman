@@ -67,3 +67,13 @@ int enq_job(queued_job **q, job_descriptor job) { /*{{{*/
     qjob->next = NULL;
     return i;
 } /*}}}*/
+
+int queue_len(queued_job *q) {
+    int qlen = 0;
+    queued_job *qjob;
+    if (q) {
+        for (qlen = 1, qjob = q; qjob->next; qjob = qjob->next, qlen++)
+            ;
+    }
+    return qlen;
+}

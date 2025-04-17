@@ -116,6 +116,7 @@ int handle_client(int soc_client) { /*{{{*/
         }
 
         send_status(soc_client, &resp);
+        disp_status();
     } else if (req.req_type == IPCREQ_VIEW_QUEUE) {
         info_request info = req.info;
         RESMAND_INFO("info request (n_view=%d)", info.n_view);
@@ -133,6 +134,8 @@ int handle_client(int soc_client) { /*{{{*/
         free_queued_job(deq_job);
         resp.status = deq_job ? STATUS_OK : STATUS_FAIL;
         send_status(soc_client, &resp);
+
+        disp_status();
     } else {
         RESMAND_ERROR("Incorrect request type: %d\n", req.req_type);
         close(soc_client);

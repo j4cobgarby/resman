@@ -34,5 +34,7 @@ void sigint_handler(int sig);
 const queued_job *peek_job(queued_job *q, int off);
 queued_job *deq_job(queued_job **q);
 int enq_job(queued_job **q, job_descriptor job);
+int queue_len(queued_job *q);
 queued_job *remove_job(queued_job **q, uuid_t uuid);
 int send_queue_info(int soc_client, unsigned int count);
+void disp_status(void);

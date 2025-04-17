@@ -4,14 +4,16 @@
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
+#include <pwd.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
-#include <unistd.h>
 #include <systemd/sd-journal.h>
+#include <unistd.h>
 
 #include "resman.h"
 
@@ -30,6 +32,15 @@ pthread_mutex_t mut_rj = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mut_q = PTHREAD_MUTEX_INITIALIZER;
 
 int main(void) { /*{{{*/
+    printf(
+        "  ____\n"
+        " |  _ \\ ___  ___ _ __ ___   __ _ _ __  \n"
+        " | |_) / _ \\/ __| '_ ` _ \\ / _` | '_ \\ \n"
+        " |  _ <  __/\\__ \\ | | | | | (_| | | | |\n"
+        " |_| \\_\\___||___/_| |_| |_|\\__,_|_| |_|\n"
+        "Version 0.0\n");
+    printf("\0337");  // Save cursor position for persistent status line
+    disp_status();
     int soc_listen, soc_client;
     struct sockaddr_un sa_client = {0};
     unsigned int soc_len = sizeof(sa_client);
@@ -64,6 +75,26 @@ int main(void) { /*{{{*/
     }
 } /*}}}*/
 
+void disp_status(void) {
+    // Go back to saved pos, clear line, and go to start
+    printf("\0338\033[2K\r");
+
+    if (running_job) {
+        struct passwd *pw = getpwuid(running_job->job.uid);
+        const char *username = pw ? pw->pw_name : "<unknown>";
+        if (running_job->job.job_type == JOB_CMD) {
+            printf("\0337> running job of %s, %d jobs queued", username,
+                   queue_len(q));
+        } else {
+            printf("\0337> running timeslot for %s, %d jobs queued", username,
+                   queue_len(q));
+        }
+    } else {
+        printf("\0337> idle, %d jobs queued", queue_len(q));
+    }
+    fflush(stdout);
+}
+
 /* The dispatcher is responsible for polling the currently running job (if one
  * exists) to check when it ends. When there is no job (the server is free,)
  * then this function begins a new one.
@@ -91,7 +122,10 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
                 continue;
             } else if (errno == ESRCH) {
                 /* The job has ended */
-                RESMAND_INFO("Job finished, uuid=%d", running_job->job.job_uuid);
+                RESMAND_INFO("Job finished, uuid=%d",
+                             running_job->job.job_uuid);
+                disp_status();
+
                 /* TODO: Here we could add the finished job to a persistent
                  * database */
                 pthread_mutex_lock(&mut_rj);
@@ -117,25 +151,30 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
             running_job = next_job;
             pthread_mutex_unlock(&mut_rj);
 
+            disp_status();
+
             if (running_job) {
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
-                        RESMAND_INFO("Sending start signal to job(pid=%d, job_uuid=%d).",
-                                     running_job->job.cmd.pid, running_job->job.job_uuid);
+                        RESMAND_INFO(
+                            "Sending start signal to job(pid=%d, job_uuid=%d).",
+                            running_job->job.cmd.pid,
+                            running_job->job.job_uuid);
                         /* Tell the waiting job stub to start the desired
                          * process */
                         kill(running_job->job.cmd.pid, SIGUSR1);
                         break;
                     case JOB_TIMESLOT:
-                        RESMAND_INFO("Serving time slot request. Sleeping for %d secs",
-                                     running_job->job.timeslot.secs);
+                        RESMAND_INFO(
+                            "Serving time slot request. Sleeping for %d secs",
+                            running_job->job.timeslot.secs);
                         sleep(running_job->job.timeslot.secs);
                         RESMAND_INFO("Sleep over.\n");
                         running_job = NULL;
                         break;
                     default:
                         RESMAND_ERROR("Got malformed job type: %d",
-                                running_job->job.job_type);
+                                      running_job->job.job_type);
                 }
             }
         }
