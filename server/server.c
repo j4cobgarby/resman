@@ -3,16 +3,12 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <pthread.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/un.h>
-#include <systemd/sd-journal.h>
 #include <unistd.h>
 
 #include "resman.h"
