@@ -25,6 +25,7 @@ OBJS_CLIENT += $(OBJS_COMMON)
 
 SERVER_EXE=resmand
 CLIENT_EXE=resman
+INSTALL_ROOT=/usr/local
 
 .PHONY: all
 all: $(BUILD)/resmand $(BUILD)/resman
@@ -47,3 +48,7 @@ $(BUILD)/%.c.o: %.c
 	@mkdir -p $(dir $@)
 	@echo -e "$(COLOUR_BLUE)$(CC): $<$(COLOUR_END)"
 	@$(CC) $(CFLAGS) -c -o $@ $<
+
+install: all
+	cp $(BUILD)/resmand $(INSTALL_ROOT)/bin/resmand
+	cp resmand.service $(INSTALL_ROOT)/lib/systemd/system/resmand.service

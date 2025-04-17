@@ -1,0 +1,9 @@
+[Unit]
+Description=Resman Server
+Documentation=https://github.com/j4cobgarby/resman
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+ExecStart=/usr/local/bin/resmand
