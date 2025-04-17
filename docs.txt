@@ -1,49 +1,66 @@
--- Job Serialisation Format --
-
- * All values are in little-endian
-
-| n bytes | Value 
-|---------|--------
-| 1       | Job type (0 => cmd, 1 => timeslot)
-| 4       | UID that submitted the job
-| 8       | UNIX timestamp of submission time
-| 8       | UNIX timestamp of job start time
-| 8       | UNIX timestamp of job end time
-|---(only for cmd type jobs)---
-| 4       | Job PID
-|---(only for timeslot type jobs)---
-| 4       | Seconds to reserve
-|---(for every type...)
-| 1       | Number of bytes in message
-| variable| Message about job
-|---------|--------
-
--- Client CLI syntax --
+== Client CLI syntax ==
 
 # Queueing a command
-resman run `some_command`
-resman run -m "Running a job" `some_command`
+$ resman run `some_command`
+$ resman run -m "Running a job" `some_command`
+# -- is used to interpret the rest of the command line as command args
+$ resman run -- my_cmd -a -b -c -d many args not interpreted by resman
 
 # Reserving for certain time
 # Note this only goes through if there's nothing in the queue, as it doesn't
 # make much sense to queue a time reservation.
-resman time 30m
+$ resman time 30m
+$ resman t 1h25m
+$ resman t 45s
 
 # Checking queue status
-resman # Overview: current status, queue length
-resman queue <n> # Queue detail (first n items)
-resman q <n> # Alternative to queue
+$ resman check 10 # Show queue (up to first 10 items)
+$ resman c # Show default max number of items
 
--- Overview of protocol --
+# Removing queued jobs
+$ resman dequeue 3 # Remove job with UUID 3 (as seen in queue)
+$ resman d 3
 
-# Client wants to run a job
+== Overview of protocol ==
 
-1) Client program opens a connection to the server's socket
-2) Client sends a serialised job_descriptor
-3) Server replies with a serialised queue_info
-3) Server receives the request and adds it to the queue
-3) When the server is ready to run that job, it sends a SIGUSR1 to the client
-4) Client wakes up, and then replaces its process image with the job that the
-     user wanted.
-5) Server monitors the job PID; when it finishes, the next job in the queue is
-     run.
+-- Queuing and running a job --
+
+ 1) Client constructs a job_descriptor struct with JOB_CMD type, containing the
+    resman client process PID, and sends this to the server.
+ 2) On reception, the server adds the job struct to its job queue.
+ 3) The server also sends back a status_response struct.
+ 4) If the client sees OK status then it halts and waits for a SIGUSR1.
+ 5) Once the server is ready for this job to begin, it sends a SIGUSR1 to the
+    client.
+ 6) When the client wakes up from this signal, it calls execvp to start
+    the actual job program.
+
+-- Reserving a timeslot --
+
+ 1) Client constructs a job_descriptor with JOB_TIMESLOT type, and sends this to
+    the server.
+ 2) On reception, the server checks if this reservation may be made (i.e. if there
+    is no currently running job). It sends back a status_response indicating this.
+ 3) On success, the server waits for the given number of seconds before starting
+    any new jobs.
+
+-- Viewing the queue --
+
+ 1) Client sends an info_request struct to the server.
+ 2) The server creates a message by appending job_descriptor structs for the
+    jobs in the queue to a queue_info_response_header struct. This whole thing
+    is sent to the client.
+ 3) The client then unpacks this data and prints all the jobs in the queue.
+
+-- Dequeuing a job --
+
+ 1) Client sends a dequeue_request struct to the server.
+ 2) The server looks for the requested job in the queue, and removes it if it's
+    there. It sends back a status_response indicating if it was successful.
+ 3) The client waits for, and then prints, the status_response.
+
+-- Additional notes --
+
+ - When the client sends some kind of request to the server, it always packages
+   it inside an ipc_request struct. This has a union of all request structs, as
+   well as a field explaining the type of request.

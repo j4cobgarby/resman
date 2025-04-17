@@ -15,3 +15,6 @@ venv/
 
 # KDE directory preferences
 .directory
+
+# Clang cache
+.cache

@@ -35,7 +35,7 @@ int main(void) { /*{{{*/
     unsigned int soc_len = sizeof(sa_client);
     pthread_t thr_dispatcher;
 
-    sd_journal_print(LOG_INFO, "== Resman daemon ==");
+    RESMAND_INFO("== Resman daemon ==");
 
     if ((soc_listen = make_soc_listen(socket_addr)) < 0) {
         return EXIT_FAILURE;
@@ -52,7 +52,6 @@ int main(void) { /*{{{*/
     }
 
     while (true) {
-        printf("[main] Waiting for connection.\n");
         if ((soc_client = accept(soc_listen, (struct sockaddr *)&sa_client,
                                  &soc_len)) < 0) {
             perror("accept");
@@ -60,7 +59,7 @@ int main(void) { /*{{{*/
         }
 
         if (handle_client(soc_client) < 0) {
-            fprintf(stderr, "Failed while handling a client.\n");
+            RESMAND_ERROR("Failed while handling a new client.");
         }
     }
 } /*}}}*/
@@ -92,7 +91,7 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
                 continue;
             } else if (errno == ESRCH) {
                 /* The job has ended */
-                sd_journal_print(LOG_INFO, "job finished, uuid=%d", running_job->job.job_uuid);
+                RESMAND_INFO("Job finished, uuid=%d", running_job->job.job_uuid);
                 /* TODO: Here we could add the finished job to a persistent
                  * database */
                 pthread_mutex_lock(&mut_rj);
@@ -121,25 +120,21 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
             if (running_job) {
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
-                        printf(
-                            "[dispatcher] Dequeued cmd job %d, sending "
-                            "signal.\n",
-                            running_job->job.cmd.pid);
-
+                        RESMAND_INFO("Sending start signal to job(pid=%d, job_uuid=%d).",
+                                     running_job->job.cmd.pid, running_job->job.job_uuid);
                         /* Tell the waiting job stub to start the desired
                          * process */
                         kill(running_job->job.cmd.pid, SIGUSR1);
                         break;
                     case JOB_TIMESLOT:
-                        printf("[dispatcher] Dequeued time slot request.\n");
-                        printf("\tSleep for %d seconds\n",
-                               running_job->job.timeslot.secs);
+                        RESMAND_INFO("Serving time slot request. Sleeping for %d secs",
+                                     running_job->job.timeslot.secs);
                         sleep(running_job->job.timeslot.secs);
-                        printf("Sleep over.\n");
+                        RESMAND_INFO("Sleep over.\n");
                         running_job = NULL;
                         break;
                     default:
-                        fprintf(stderr, "Malformed job type: %d\n",
+                        RESMAND_ERROR("Got malformed job type: %d",
                                 running_job->job.job_type);
                 }
             }
@@ -183,16 +178,13 @@ int send_queue_info(int soc_client, unsigned int count) {
     pthread_mutex_unlock(&mut_q);
     pthread_mutex_unlock(&mut_rj);
 
-    printf("Final pos = %d. This should be equal to %lu\n", pos, buf_len);
-
     if (send(soc_client, ser_buf, buf_len, 0) < 0) {
-        perror("[error] Failed sending queue response.\n");
+        RESMAND_ERROR("Failed sending queue response to client.");
         free(ser_buf);
         return -1;
     }
 
     free(ser_buf);
-    printf("Sent response back to client.\n");
     return 0;
 fail:
     pthread_mutex_unlock(&mut_q);

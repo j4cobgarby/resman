@@ -58,9 +58,6 @@ static int send_status(int soc, status_response *resp) {/*{{{*/
 int handle_client(int soc_client) { /*{{{*/
     ipc_request req;
     status_response resp;
-    int n_jobs;
-
-    printf("[main] Client connected.\n");
 
     int bytes_read;
     if ((bytes_read = recv(soc_client, &req, sizeof(req), 0)) == -1) {
@@ -68,7 +65,7 @@ int handle_client(int soc_client) { /*{{{*/
     }
 
     if (bytes_read != sizeof(req)) {
-        printf("Something went wrong, we read %d bytes but expected %lu\n",
+        RESMAND_ERROR("Problem with client request: got %d bytes but expected %lu\n",
                bytes_read, sizeof(req));
         close(soc_client);
         return -1;
@@ -76,40 +73,42 @@ int handle_client(int soc_client) { /*{{{*/
 
     if (req.req_type == IPCREQ_JOB) {
         job_descriptor job = req.job;
-        job.job_uuid = next_uuid();
-        printf("== Job ==\n");
-        printf(
-            " * User ID=%d\n"
-            " * Message=%s\n"
-            " * Submit time=%ld\n"
-            " * Generated UUID=%d\n",
-            job.uid, job.msg, job.t_submitted, job.job_uuid);
-        if (job.job_type == JOB_CMD) {
-            printf(" * PID=%d\n", job.cmd.pid);
-        } else {
-            printf(" * Seconds=%d\n", job.timeslot.secs);
+
+        if (job.job_type != JOB_CMD && job.job_type != JOB_TIMESLOT) {
+            RESMAND_ERROR("Unrecognised job type in request.");
+            goto _close;
         }
-        printf("=========\n");
+
+        job.job_uuid = next_uuid();
+        if (job.job_type == JOB_CMD) {
+            RESMAND_INFO(
+                "new job CMD(uid=%d job_uuid=%d pid=%d msg=%s)",
+                job.uid, job.job_uuid, job.cmd.pid, job.msg
+            );
+        } else {
+            RESMAND_INFO(
+                "new job TIMESLOT(uid=%d job_uuid=%d time=%ds msg=%s)",
+                job.uid, job.job_uuid, job.timeslot.secs, job.msg
+            );
+        }
 
         switch (job.job_type) {
             case JOB_CMD:
                 pthread_mutex_lock(&mut_q);
-                n_jobs = enq_job(&q, job);
+                enq_job(&q, job);
                 pthread_mutex_unlock(&mut_q);
-                printf("[main] Enqueued job. Now %d jobs in queue\n", n_jobs);
                 resp.status = STATUS_OK;
                 break;
             case JOB_TIMESLOT:
                 if (running_job || peek_job(q, 0)) {
-                    printf(
-                        "[main] User %d wanted a timeslot, but server is "
-                        "already "
-                        "reserved.\n",
+                    RESMAND_INFO(
+                        "User %d wanted a timeslot, but server is "
+                        "already reserved.\n",
                         job.uid);
                     resp.status = STATUS_FAIL;
                 } else {
                     pthread_mutex_lock(&mut_q);
-                    n_jobs = enq_job(&q, job);
+                    enq_job(&q, job);
                     pthread_mutex_unlock(&mut_q);
                     resp.status = STATUS_OK;
                 }
@@ -119,32 +118,27 @@ int handle_client(int soc_client) { /*{{{*/
         send_status(soc_client, &resp);
     } else if (req.req_type == IPCREQ_VIEW_QUEUE) {
         info_request info = req.info;
-        printf("== Info Request ==\n");
-        printf(" * Num to view=%d\n", info.n_view);
-        printf("=========\n");
-
+        RESMAND_INFO("info request (n_view=%d)", info.n_view);
         send_queue_info(soc_client, info.n_view);
     } else if (req.req_type == IPCREQ_DEQUEUE) {
         dequeue_request deq = req.deq;
-        printf("== Dequeue Request ==\n");
-        printf(" * Job ID=%d\n", deq.job_uuid);
-        printf("=========\n");
+        RESMAND_INFO("dequeue request (job_uuid=%d)", deq.job_uuid);
 
         pthread_mutex_lock(&mut_q);
         queued_job *deq_job = remove_job(&q, deq.job_uuid);
         pthread_mutex_unlock(&mut_q);
 
-        printf("Dequeued job = %lu\n", (unsigned long)deq_job);
+        RESMAND_INFO("Dequeued job = %lu", (unsigned long)deq_job);
 
         free_queued_job(deq_job);
         resp.status = deq_job ? STATUS_OK : STATUS_FAIL;
         send_status(soc_client, &resp);
     } else {
-        fprintf(stderr, "Incorrect request type: %d\n", req.req_type);
+        RESMAND_ERROR("Incorrect request type: %d\n", req.req_type);
         close(soc_client);
         return -1;
     }
-
+_close:
     close(soc_client);
 
     return 0;

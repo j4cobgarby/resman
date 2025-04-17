@@ -23,7 +23,6 @@ static int get_status(int soc, status_response *stat) {/*{{{*/
     if (recv(soc, stat, sizeof(status_response), 0) < 0) {
         return -1;
     }
-    printf("Read status: %d\n", stat->status);
     return 0;
 }/*}}}*/
 
@@ -194,7 +193,7 @@ int subcmd_time(int argc, char **argv) { /*{{{*/
     }
 
     if (resp.status != STATUS_OK) {
-        fprintf(stderr, "Could not reserve time slot. Queuing time slots does not make sense, semantically.\n");
+        fprintf(stderr, "Could not reserve time slot. Perhaps the server is already in use?");
         return -1;
     }
 
@@ -272,10 +271,10 @@ int subcmd_check(int argc UNUSED, char **argv UNUSED) { /*{{{*/
         printf(tab_fmt, jobs[i].job_uuid, jobtype_lbl[jobs[i].job_type],
                pwd ? pwd->pw_name : "---", time_buf, jobs[i].msg);
 
-        if (resp_header->currently_running && i == 0) printf("\033[0m");
+        if (resp_header->currently_running && i == 0) printf(CLR_END);
     }
 
-    return 0;
+    return resp_header->currently_running;
 } /*}}}*/
 
 int subcmd_dequeue(int argc, char **argv) { /*{{{*/
