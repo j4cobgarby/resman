@@ -1,5 +1,6 @@
 // vim: fdm=marker
 #include <sys/socket.h>
+#include <sys/stat.h> /* chmod */
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -29,6 +30,8 @@ int make_soc_listen(const char *addr) { /*{{{*/
         perror("bind");
         return -1;
     }
+
+    chmod(addr, 0666);
 
     if (listen(soc_listen, LISTEN_QUEUE) < 0) {
         perror("listen");

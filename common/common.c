@@ -1,3 +1,3 @@
 #include "resman.h"
 
-const char *socket_addr = "/tmp/resman.sock";
+const char *socket_addr = "/run/resman.socket";

@@ -40,13 +40,12 @@ int main(void) { /*{{{*/
         " |_| \\_\\___||___/_| |_| |_|\\__,_|_| |_|\n"
         "Version 0.0\n");
     printf("\0337");  // Save cursor position for persistent status line
+
     disp_status();
     int soc_listen, soc_client;
     struct sockaddr_un sa_client = {0};
     unsigned int soc_len = sizeof(sa_client);
     pthread_t thr_dispatcher;
-
-    RESMAND_INFO("== Resman daemon ==");
 
     if ((soc_listen = make_soc_listen(socket_addr)) < 0) {
         return EXIT_FAILURE;
