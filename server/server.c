@@ -70,7 +70,7 @@ int main(void) { /*{{{*/
     }
 } /*}}}*/
 
-void disp_status(void) {
+void disp_status(void) {/* {{{ */
     // Go back to saved pos, clear line, and go to start
     printf("\0338\033[2K\r");
 
@@ -88,7 +88,7 @@ void disp_status(void) {
         printf("\0337> idle, %d jobs queued", queue_len(q));
     }
     fflush(stdout);
-}
+}/* }}} */
 
 /* The dispatcher is responsible for polling the currently running job (if one
  * exists) to check when it ends. When there is no job (the server is free,)
@@ -176,7 +176,7 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
     }
 } /*}}}*/
 
-int send_queue_info(int soc_client, unsigned int count) {
+int send_queue_info(int soc_client, unsigned int count) {/* {{{ */
     pthread_mutex_lock(&mut_q);
     pthread_mutex_lock(&mut_rj);
 
@@ -224,7 +224,7 @@ fail:
     pthread_mutex_unlock(&mut_q);
     pthread_mutex_unlock(&mut_rj);
     return -1;
-}
+}/* }}} */
 
 void sigint_handler(int sig UNUSED) { /*{{{*/
     printf("Caught SIGINT: exiting.\n");

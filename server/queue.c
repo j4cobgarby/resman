@@ -68,7 +68,8 @@ int enq_job(queued_job **q, job_descriptor job) { /*{{{*/
     return i;
 } /*}}}*/
 
-int queue_len(queued_job *q) {
+/* Get length of queue. */
+int queue_len(queued_job *q) {/* {{{ */
     int qlen = 0;
     queued_job *qjob;
     if (q) {
@@ -76,4 +77,4 @@ int queue_len(queued_job *q) {
             ;
     }
     return qlen;
-}
+}/* }}} */
