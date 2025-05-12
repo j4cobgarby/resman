@@ -50,5 +50,9 @@ $(BUILD)/%.c.o: %.c
 	@$(CC) $(CFLAGS) -c -o $@ $<
 
 install: all
+	mkdir -p $(INSTALL_ROOT)/bin
+	mkdir -p $(INSTALL_ROOT)/lib/systemd/system
 	cp $(BUILD)/resmand $(INSTALL_ROOT)/bin/resmand
+	cp $(BUILD)/resman $(INSTALL_ROOT)/bin/resman
 	cp resmand.service $(INSTALL_ROOT)/lib/systemd/system/resmand.service
+	chmod a+x $(INSTALL_ROOT)/bin/resman
