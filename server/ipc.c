@@ -122,7 +122,6 @@ int handle_client(int soc_client) { /*{{{*/
         disp_status();
     } else if (req.req_type == IPCREQ_VIEW_QUEUE) {
         info_request info = req.info;
-        RESMAND_INFO("info request (n_view=%d)", info.n_view);
         send_queue_info(soc_client, info.n_view);
     } else if (req.req_type == IPCREQ_DEQUEUE) {
         dequeue_request deq = req.deq;

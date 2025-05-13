@@ -1,2 +1,2 @@
 #!/usr/bin/bash
-journalctl -fu resmand
+journalctl -fu resmand --all

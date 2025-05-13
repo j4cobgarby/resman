@@ -35,7 +35,6 @@ int main(void) { /*{{{*/
         " |  _ <  __/\\__ \\ | | | | | (_| | | | |\n"
         " |_| \\_\\___||___/_| |_| |_|\\__,_|_| |_|\n"
         "Version 0.0\n");
-    printf("\0337");  // Save cursor position for persistent status line
 
     disp_status();
     int soc_listen, soc_client;
@@ -71,23 +70,7 @@ int main(void) { /*{{{*/
 } /*}}}*/
 
 void disp_status(void) {/* {{{ */
-    // Go back to saved pos, clear line, and go to start
-    printf("\0338\033[2K\r");
-
-    if (running_job) {
-        struct passwd *pw = getpwuid(running_job->job.uid);
-        const char *username = pw ? pw->pw_name : "<unknown>";
-        if (running_job->job.job_type == JOB_CMD) {
-            printf("\0337> running job of %s, %d jobs queued", username,
-                   queue_len(q));
-        } else {
-            printf("\0337> running timeslot for %s, %d jobs queued", username,
-                   queue_len(q));
-        }
-    } else {
-        printf("\0337> idle, %d jobs queued", queue_len(q));
-    }
-    fflush(stdout);
+    return;
 }/* }}} */
 
 /* The dispatcher is responsible for polling the currently running job (if one
