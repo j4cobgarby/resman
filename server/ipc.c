@@ -12,6 +12,7 @@
  * to communicate over. */
 int make_soc_listen(const char *addr) { /*{{{*/
     int soc_listen;
+    unsigned int sa_len;
     struct sockaddr_un sa_local = {0};
 
     soc_listen = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -20,18 +21,17 @@ int make_soc_listen(const char *addr) { /*{{{*/
         return -1;
     }
 
-    remove(addr);
-
+    memset(&sa_local, 0, sizeof(sa_local));
     sa_local.sun_family = AF_UNIX;
-    strcpy(sa_local.sun_path, addr);
+    sa_local.sun_path[0] = '\0';
+    strncpy(sa_local.sun_path + 1, addr, strlen(addr));
+    
+    sa_len = offsetof(struct sockaddr_un, sun_path) + 1 + strlen(addr);
 
-    if (bind(soc_listen, (struct sockaddr *)&sa_local,
-             sizeof(struct sockaddr_un)) < 0) {
+    if (bind(soc_listen, (struct sockaddr *)&sa_local, sa_len) < 0) {
         perror("bind");
         return -1;
     }
-
-    chmod(addr, 0666);
 
     if (listen(soc_listen, LISTEN_QUEUE) < 0) {
         perror("listen");

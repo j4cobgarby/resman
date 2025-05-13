@@ -44,9 +44,11 @@ int connect_to_server(const char *addr) { /*{{{*/
         return -1;
     }
 
+    memset(&sa_server, 0, sizeof(sa_server));
     sa_server.sun_family = AF_UNIX;
-    strcpy(sa_server.sun_path, addr);
-    sa_len = strlen(sa_server.sun_path) + sizeof(sa_server.sun_family);
+    sa_server.sun_path[0] = '\0';
+    strncpy(sa_server.sun_path + 1, addr, strlen(addr));
+    sa_len = offsetof(struct sockaddr_un, sun_path) + 1 + strlen(addr);
 
     if (connect(soc, (struct sockaddr *)&sa_server, sa_len) < 0) {
         return -1;
