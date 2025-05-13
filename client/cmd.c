@@ -247,6 +247,16 @@ int subcmd_check(int argc UNUSED, char **argv UNUSED) { /*{{{*/
     if (resp_header->currently_running) {
         printf(CLR_RED "** A job is currently running **\n" CLR_END);
         printf("%d other jobs are queued.\n", resp_header->total_count - 1);
+        char s_time[32];
+        strftime(s_time, sizeof(s_time), "%a %e %b %T",
+                localtime(&jobs[0].t_started));
+        printf("Current job started .. " CLR_BLUE "%s\n" CLR_END, s_time);
+
+        strftime(s_time, sizeof(s_time), "%a %e %b %T",
+                localtime(&jobs[0].timeslot.t_end));
+        if (jobs[0].job_type == JOB_TIMESLOT) {
+            printf("It will end at ....... " CLR_BLUE "%s\n" CLR_END, s_time);
+        }
     } else {
         printf("%d jobs are queued, none are running.\n",
                resp_header->total_count);

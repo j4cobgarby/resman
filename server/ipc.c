@@ -78,19 +78,19 @@ int handle_client(int soc_client) { /*{{{*/
         job_descriptor job = req.job;
 
         if (job.job_type != JOB_CMD && job.job_type != JOB_TIMESLOT) {
-            RESMAND_ERROR("Unrecognised job type in request.");
+            RESMAND_ERROR("Unrecognised job type in request.\n");
             goto _close;
         }
 
         job.job_uuid = next_uuid();
         if (job.job_type == JOB_CMD) {
             RESMAND_INFO(
-                "new job CMD(uid=%d job_uuid=%d pid=%d msg=%s)",
+                "new job CMD(uid=%d job_uuid=%d pid=%d msg=%s)\n",
                 job.uid, job.job_uuid, job.cmd.pid, job.msg
             );
         } else {
             RESMAND_INFO(
-                "new job TIMESLOT(uid=%d job_uuid=%d time=%ds msg=%s)",
+                "new job TIMESLOT(uid=%d job_uuid=%d time=%ds msg=%s)\n",
                 job.uid, job.job_uuid, job.timeslot.secs, job.msg
             );
         }
@@ -125,13 +125,13 @@ int handle_client(int soc_client) { /*{{{*/
         send_queue_info(soc_client, info.n_view);
     } else if (req.req_type == IPCREQ_DEQUEUE) {
         dequeue_request deq = req.deq;
-        RESMAND_INFO("dequeue request (job_uuid=%d)", deq.job_uuid);
+        RESMAND_INFO("dequeue request (job_uuid=%d)\n", deq.job_uuid);
 
         pthread_mutex_lock(&mut_q);
         queued_job *deq_job = remove_job(&q, deq.job_uuid);
         pthread_mutex_unlock(&mut_q);
 
-        RESMAND_INFO("Dequeued job = %lu", (unsigned long)deq_job);
+        RESMAND_INFO("Dequeued job = %lu\n", (unsigned long)deq_job);
 
         free_queued_job(deq_job);
         resp.status = deq_job ? STATUS_OK : STATUS_FAIL;

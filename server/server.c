@@ -64,7 +64,7 @@ int main(void) { /*{{{*/
         }
 
         if (handle_client(soc_client) < 0) {
-            RESMAND_ERROR("Failed while handling a new client.");
+            RESMAND_ERROR("Failed while handling a new client.\n");
         }
     }
 } /*}}}*/
@@ -100,7 +100,7 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
                 continue;
             } else if (errno == ESRCH) {
                 /* The job has ended */
-                RESMAND_INFO("Job finished, uuid=%d",
+                RESMAND_INFO("Job finished, uuid=%d\n",
                              running_job->job.job_uuid);
                 disp_status();
 
@@ -129,29 +129,31 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
             running_job = next_job;
             pthread_mutex_unlock(&mut_rj);
 
-            disp_status();
-
             if (running_job) {
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
                         RESMAND_INFO(
-                            "Sending start signal to job(pid=%d, job_uuid=%d).",
+                            "Sending start signal to job(pid=%d, job_uuid=%d).\n",
                             running_job->job.cmd.pid,
                             running_job->job.job_uuid);
                         /* Tell the waiting job stub to start the desired
                          * process */
+                        running_job->job.t_started = time(NULL);
                         kill(running_job->job.cmd.pid, SIGUSR1);
                         break;
                     case JOB_TIMESLOT:
                         RESMAND_INFO(
-                            "Serving time slot request. Sleeping for %d secs",
+                            "Serving time slot request. Sleeping for %d secs.\n",
                             running_job->job.timeslot.secs);
+                        running_job->job.t_started = time(NULL);
+                        running_job->job.timeslot.t_end = 
+                            running_job->job.t_started + running_job->job.timeslot.secs;
                         sleep(running_job->job.timeslot.secs);
                         RESMAND_INFO("Sleep over.\n");
                         running_job = NULL;
                         break;
                     default:
-                        RESMAND_ERROR("Got malformed job type: %d",
+                        RESMAND_ERROR("Got malformed job type: %d.\n",
                                       running_job->job.job_type);
                 }
             }
@@ -196,7 +198,7 @@ int send_queue_info(int soc_client, unsigned int count) {/* {{{ */
     pthread_mutex_unlock(&mut_rj);
 
     if (send(soc_client, ser_buf, buf_len, 0) < 0) {
-        RESMAND_ERROR("Failed sending queue response to client.");
+        RESMAND_ERROR("Failed sending queue response to client.\n");
         free(ser_buf);
         return -1;
     }
