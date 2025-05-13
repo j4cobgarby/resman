@@ -56,3 +56,4 @@ install: all
 	cp $(BUILD)/resman $(INSTALL_ROOT)/bin/resman
 	cp resmand.service $(INSTALL_ROOT)/lib/systemd/system/resmand.service
 	chmod a+x $(INSTALL_ROOT)/bin/resman
+	chmod a+r $(INSTALL_ROOT)/lib/systemd/system/resmand.service
