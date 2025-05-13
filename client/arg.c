@@ -129,6 +129,9 @@ error_t parser_check(int key, char *arg, struct argp_state *state) { /*{{{*/
             printf("[info] Verbose mode enabled.\n");
             args->verbose = 1;
             break;
+        case 's':
+            args->silence = 1;
+            break;
         case 'n':
             errno = 0;
             args->n = strtol(arg, &end, 10);

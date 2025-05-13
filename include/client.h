@@ -36,6 +36,7 @@ struct args_time {
 struct args_check {
     int n;
     int verbose;
+    int silence;
 };
 
 struct args_dequeue {
@@ -66,6 +67,7 @@ static struct argp argp_time = {
     NULL};
 
 static struct argp_option options_check[] = {
+    {"silent",  's', 0, 0, "Don't print anything, just return status value.", 0},
     {"count",   'n', "COUNT", 0, "How many queued jobs to view.", 0},
     {"verbose", 'V', 0, 0, "Give verbose output.",          0},
     {0,         0,   0, 0, 0,                               0},
