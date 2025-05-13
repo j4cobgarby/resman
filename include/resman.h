@@ -41,6 +41,7 @@ enum ipc_request_type {
 typedef struct job_descriptor {
     uid_t uid;           // User who submitted job
     time_t t_submitted;  // Time job was sent to resman
+    time_t t_started;    // Time job begun
     char msg[JOB_MSG_LEN];
     uuid_t job_uuid;  // Set by the server
 
@@ -51,6 +52,7 @@ typedef struct job_descriptor {
         } cmd;
         struct {
             unsigned int secs;  // Seconds to reserve
+            time_t t_end;       // Time reservation will end
         } timeslot;
     };
 } job_descriptor;

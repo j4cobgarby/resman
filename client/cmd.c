@@ -247,29 +247,40 @@ int subcmd_check(int argc UNUSED, char **argv UNUSED) { /*{{{*/
     if (resp_header->currently_running) {
         printf(CLR_RED "** A job is currently running **\n" CLR_END);
         printf("%d other jobs are queued.\n", resp_header->total_count - 1);
+        char s_time[32];
+        strftime(s_time, sizeof(s_time), "%a %e %b %T",
+                localtime(&jobs[0].t_started));
+        printf("Current job started %s\n", s_time);
+
+        strftime(s_time, sizeof(s_time), "%a %e %b %T",
+                localtime(&jobs[0].timeslot.t_end));
+        if (jobs[0].job_type == JOB_TIMESLOT) {
+            printf("It will end at %s\n", s_time);
+        }
     } else {
         printf("%d jobs are queued, none are running.\n",
                resp_header->total_count);
     }
 
     const char *head_fmt = " %4s | %-8s | %-8s | %-19s | %s\n";
-    const char *tab_fmt = "%4d | %-8s | %-8s | %-19s | %s\n";
+    const char *tab_fmt =   "%4d | %-8s | %-8s | %-19s | %s\n";
 
-    printf(head_fmt, "uuid", "type", "user", "time submitted", "message");
+    printf(head_fmt, "uuid", "type", "user", "time submitted", "info");
     printf(head_fmt, "---", "---", "---", "---", "---");
 
-    char time_buf[32];
+    char s_submitted[32];
+
 
     for (int i = 0; i < (int)resp_header->resp_count; i++) {
         struct passwd *pwd = getpwuid(jobs[i].uid);
-        strftime(time_buf, sizeof(time_buf), "%a %e %b %T",
+        strftime(s_submitted, sizeof(s_submitted), "%a %e %b %T",
                  localtime(&jobs[i].t_submitted));
 
-        if (resp_header->currently_running && i == 0) printf(CLR_BLUE ">");
+        if (resp_header->currently_running && i == 0) printf(">");
         else printf(" ");
 
         printf(tab_fmt, jobs[i].job_uuid, jobtype_lbl[jobs[i].job_type],
-               pwd ? pwd->pw_name : "---", time_buf, jobs[i].msg);
+               pwd ? pwd->pw_name : "---", s_submitted, jobs[i].msg);
 
         if (resp_header->currently_running && i == 0) printf(CLR_END);
     }
