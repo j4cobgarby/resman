@@ -12,8 +12,8 @@
 // #define RESMAND_ERROR(...) \
 //     sd_journal_print(LOG_ERR, __VA_ARGS__)
 
-#define RESMAND_INFO(...) printf("[info]" __VA_ARGS__)
-#define RESMAND_ERROR(...) printf("[error!]" __VA_ARGS__)
+#define RESMAND_INFO(...) printf("[info]" __VA_ARGS__); fflush(stdout);
+#define RESMAND_ERROR(...) printf("[error!]" __VA_ARGS__); fflush(stdout);
 
 /* Thin wrapper around job descriptor for server-only fields */
 typedef struct queued_job {
