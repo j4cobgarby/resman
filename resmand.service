@@ -7,7 +7,9 @@ WantedBy=multi-user.target
 
 [Service]
 ExecStart=/usr/local/bin/resmand
-User=nobody
+User=resmand
+StandardOutput=journal
+StandardError=journal
 
 # This line means that the non-root process may send signals to other processes
 AmbientCapabilities=CAP_KILL
