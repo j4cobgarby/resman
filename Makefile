@@ -54,8 +54,8 @@ install: all
 	mkdir -p $(INSTALL_ROOT)/lib/systemd/system
 	cp $(BUILD)/resman $(INSTALL_ROOT)/bin/resman
 	cp $(BUILD)/resmand $(INSTALL_ROOT)/bin/resmand
-	cp resmand.service $(INSTALL_ROOT)/lib/systemd/system/resmand.service
+	cp resmand.service /etc/systemd/system/resmand.service
 	chmod a+x $(INSTALL_ROOT)/bin/resman
 	chmod a+x $(INSTALL_ROOT)/bin/resmand
-	chmod a+r $(INSTALL_ROOT)/lib/systemd/system/resmand.service
+	chmod a+r /etc/systemd/system/resmand.service
 	@echo -e "$(COLOUR_BLUE)Installation complete.$(COLOUR_END)"

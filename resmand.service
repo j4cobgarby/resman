@@ -1,15 +1,15 @@
 [Unit]
 Description=Resman Server
 Documentation=https://github.com/j4cobgarby/resman
-
-[Install]
-WantedBy=multi-user.target
+After=network.target local-fs.target
 
 [Service]
 ExecStart=/usr/local/bin/resmand
 User=resmand
 StandardOutput=journal
 StandardError=journal
-
 # This line means that the non-root process may send signals to other processes
 AmbientCapabilities=CAP_KILL
+
+[Install]
+WantedBy=multi-user.target
