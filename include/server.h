@@ -1,16 +1,9 @@
 // vim: fdm=marker
 #include "resman.h"
 #include <pthread.h> /* pthread_mutex_* */
-#include <systemd/sd-journal.h>
-#include <sys/syslog.h>
 
 #define LISTEN_QUEUE 8
 #define POLL_DELAY 2
-
-// #define RESMAND_INFO(...) \
-//     sd_journal_print(LOG_INFO, __VA_ARGS__)
-// #define RESMAND_ERROR(...) \
-//     sd_journal_print(LOG_ERR, __VA_ARGS__)
 
 #define RESMAND_INFO(...) printf("[info]" __VA_ARGS__); fflush(stdout);
 #define RESMAND_ERROR(...) printf("[error!]" __VA_ARGS__); fflush(stdout);
@@ -21,6 +14,7 @@ typedef struct queued_job {
     struct queued_job *next;
     time_t t_started;
     time_t t_ended;
+    int manually_released;
 } queued_job;
 
 void free_queued_job(queued_job *);

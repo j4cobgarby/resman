@@ -3,10 +3,10 @@ COLOUR_RED=\033[0;31m
 COLOUR_BLUE=\033[0;36m
 COLOUR_END=\033[0m
 
-CC=clang
-CFLAGS=-Wall -Wextra -Wpedantic -Iinclude `pkg-config --cflags libsystemd`
-LD=clang
-LDFLAGS=`pkg-config --libs libsystemd`
+CC=gcc
+CFLAGS=-Wall -Wextra -Wpedantic -Iinclude
+LD=gcc
+LDFLAGS=
 
 BUILD=./build
 SRCDIR_SERVER=server

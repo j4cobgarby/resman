@@ -14,12 +14,12 @@
 #include "resman.h"
 
 /* The currently executing job, or NULL if no job is currently running. */
-queued_job *running_job = NULL;
+queued_job* running_job = NULL;
 
 /* Queue for jobs to run, not including the one which is currently running.
  * Only includes actual jobs, not timeslot reservations, since those can't
  * be queued */
-queued_job *q = NULL;
+queued_job* q = NULL;
 
 /* Mutex for running_job */
 pthread_mutex_t mut_rj = PTHREAD_MUTEX_INITIALIZER;
@@ -57,7 +57,7 @@ int main(void) { /*{{{*/
     }
 
     while (true) {
-        if ((soc_client = accept(soc_listen, (struct sockaddr *)&sa_client,
+        if ((soc_client = accept(soc_listen, (struct sockaddr*)&sa_client,
                                  &soc_len)) < 0) {
             perror("accept");
             continue;
@@ -69,17 +69,15 @@ int main(void) { /*{{{*/
     }
 } /*}}}*/
 
-void disp_status(void) {/* {{{ */
-    return;
-}/* }}} */
+void disp_status(void) { /* {{{ */ return; } /* }}} */
 
 /* The dispatcher is responsible for polling the currently running job (if one
  * exists) to check when it ends. When there is no job (the server is free,)
  * then this function begins a new one.
  * It's meant to be run as a thread. */
-void *dispatcher(void *args UNUSED) { /*{{{*/
+void* dispatcher(void* args UNUSED) { /*{{{*/
     pid_t pid;
-    queued_job *next_job;
+    queued_job* next_job;
     int is_running;
 
     while (true) {
@@ -90,31 +88,60 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
         pthread_mutex_unlock(&mut_rj);
 
         if (is_running) {
-            /* There is a currently running job. */
+            /* There is a currently running job. Time or Cmd.
+             * This code checks if the current job is ready to end. */
 
-            assert(running_job->job.job_type == JOB_CMD);
-            pid = running_job->job.cmd.pid;
+            switch (running_job->job.job_type) {
+                case JOB_TIMESLOT: {
+                    if (running_job->manually_released || time(NULL) >= running_job->job.timeslot.t_end) {
+                        RESMAND_INFO("Job finished timeslot.\n");
 
-            if (kill(pid, 0) == 0) {
-                /* Job is still alive, just wait. */
-                continue;
-            } else if (errno == ESRCH) {
-                /* The job has ended */
-                RESMAND_INFO("Job finished, uuid=%d\n",
-                             running_job->job.job_uuid);
-                disp_status();
+                        pthread_mutex_lock(&mut_rj);
+                        free_queued_job(running_job);
+                        running_job = NULL;
+                        pthread_mutex_unlock(&mut_rj);
 
-                /* TODO: Here we could add the finished job to a persistent
-                 * database */
-                pthread_mutex_lock(&mut_rj);
-                free_queued_job(running_job);
-                running_job = NULL;
-                pthread_mutex_unlock(&mut_rj);
+                        goto try_start;
+                    }
+                    break;
+                }
+                case JOB_CMD: {
+                    pthread_mutex_lock(&mut_rj);
+                    if (running_job->manually_released) {
+                        free_queued_job(running_job);
+                        running_job = NULL;
+                        pthread_mutex_unlock(&mut_rj);
 
-                goto try_start;  // Skip the timeout to try to start a new job.
-            } else {
-                perror("kill");
-                exit(EXIT_FAILURE);
+                        goto try_start;
+                    }
+                    pthread_mutex_unlock(&mut_rj);
+
+                    pid = running_job->job.cmd.pid;
+
+                    if (kill(pid, 0) == 0) {
+                        /* Job is still alive, just wait. */
+                        continue;
+                    } else if (errno == ESRCH) {
+                        /* The job has ended */
+                        RESMAND_INFO("Job finished, uuid=%d\n",
+                                     running_job->job.job_uuid);
+                        disp_status();
+
+                        /* TODO: Here we could add the finished job to a
+                         * persistent database */
+                        pthread_mutex_lock(&mut_rj);
+                        free_queued_job(running_job);
+                        running_job = NULL;
+                        pthread_mutex_unlock(&mut_rj);
+
+                        goto try_start;  // Skip the timeout to try to start a
+                                         // new job.
+                    } else {
+                        perror("kill");
+                        exit(EXIT_FAILURE);
+                    }
+                    break;
+                }
             }
         } else {
             /* No job is running, so let's try to start a new one. */
@@ -127,13 +154,13 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
 
             pthread_mutex_lock(&mut_rj);
             running_job = next_job;
-            pthread_mutex_unlock(&mut_rj);
 
             if (running_job) {
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
                         RESMAND_INFO(
-                            "Sending start signal to job(pid=%d, job_uuid=%d).\n",
+                            "Sending start signal to job(pid=%d, "
+                            "job_uuid=%d).\n",
                             running_job->job.cmd.pid,
                             running_job->job.job_uuid);
                         /* Tell the waiting job stub to start the desired
@@ -143,33 +170,33 @@ void *dispatcher(void *args UNUSED) { /*{{{*/
                         break;
                     case JOB_TIMESLOT:
                         RESMAND_INFO(
-                            "Serving time slot request. Sleeping for %d secs.\n",
+                            "Serving time slot request. Sleeping for %d "
+                            "secs.\n",
                             running_job->job.timeslot.secs);
                         running_job->job.t_started = time(NULL);
-                        running_job->job.timeslot.t_end = 
-                            running_job->job.t_started + running_job->job.timeslot.secs;
-                        sleep(running_job->job.timeslot.secs);
-                        RESMAND_INFO("Sleep over.\n");
-                        running_job = NULL;
+                        running_job->job.timeslot.t_end =
+                            running_job->job.t_started +
+                            running_job->job.timeslot.secs;
                         break;
                     default:
                         RESMAND_ERROR("Got malformed job type: %d.\n",
                                       running_job->job.job_type);
                 }
             }
+
+            pthread_mutex_unlock(&mut_rj);
         }
     }
 } /*}}}*/
 
-int send_queue_info(int soc_client, unsigned int count) {/* {{{ */
+int send_queue_info(int soc_client, unsigned int count) { /* {{{ */
     pthread_mutex_lock(&mut_q);
     pthread_mutex_lock(&mut_rj);
 
     int qlen = 0;
-    queued_job *qjob;
+    queued_job* qjob;
     if (q) {
-        for (qlen = 1, qjob = q; qjob->next; qjob = qjob->next, qlen++)
-            ;
+        for (qlen = 1, qjob = q; qjob->next; qjob = qjob->next, qlen++);
     }
 
     queue_info_response_header header;
@@ -179,7 +206,7 @@ int send_queue_info(int soc_client, unsigned int count) {/* {{{ */
 
     const unsigned long buf_len =
         sizeof(header) + header.resp_count * sizeof(job_descriptor);
-    char *ser_buf = malloc(buf_len);
+    char* ser_buf = malloc(buf_len);
     if (!ser_buf) goto fail;
 
     memcpy(ser_buf, &header, sizeof(header));
@@ -209,11 +236,11 @@ fail:
     pthread_mutex_unlock(&mut_q);
     pthread_mutex_unlock(&mut_rj);
     return -1;
-}/* }}} */
+} /* }}} */
 
 void sigint_handler(int sig UNUSED) { /*{{{*/
     printf("Caught SIGINT: exiting.\n");
     exit(EXIT_SUCCESS);
 } /*}}}*/
 
-void free_queued_job(queued_job *qjob) { free(qjob); }
+void free_queued_job(queued_job* qjob) { free(qjob); }

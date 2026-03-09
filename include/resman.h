@@ -25,15 +25,11 @@ enum job_type {
     JOB_TIMESLOT,
 };
 
-static const char *jobtype_lbl[] = {
-    "Command",
-    "Time",
-};
-
 enum ipc_request_type {
     IPCREQ_JOB,
     IPCREQ_VIEW_QUEUE,
     IPCREQ_DEQUEUE,
+    IPCREQ_RELEASE,
 };
 
 #define JOB_MSG_LEN 256
@@ -65,6 +61,10 @@ typedef struct dequeue_request {
     uuid_t job_uuid;
 } dequeue_request;
 
+typedef struct release_request {
+    int force;
+} release_request;
+
 typedef struct queue_info_response_header {
     unsigned int resp_count;
     unsigned int total_count;
@@ -84,6 +84,7 @@ typedef struct ipc_request {
         job_descriptor job;
         info_request info;
         dequeue_request deq;
+        release_request rel;
     };
 } ipc_request;
 

@@ -1,5 +1,5 @@
 // vim: fdm=marker
-#include <pwd.h>     // struct passwd
+#include <pwd.h>  // struct passwd
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,23 +10,83 @@
 #include "client.h"
 #include "resman.h"
 
-static int send_ipc_request(int soc, const ipc_request *req) {/*{{{*/
+const char *jobtype_lbl[] = {
+    "Command",
+    "Time",
+};
+
+static struct argp_option options_run[] = {
+    {"msg",     'm', "MESSAGE", 0, "Description of your job.", 0},
+    {"verbose", 'V', 0,         0, "Give verbose output.",     0},
+    {0,         0,   0,         0, 0,                          0},
+};
+
+static struct argp argp_run = {
+    options_run, &parser_run, "COMMAND", "Submits a job to resmand.",
+    NULL,        NULL,        NULL};
+
+static struct argp_option options_time[] = {
+    {"msg",     'm', "MESSAGE", 0, "Explanation for your reservation.", 0},
+    {"verbose", 'V', 0,         0, "Give verbose output.",              0},
+    {0,         0,   0,         0, 0,                                   0},
+};
+
+static struct argp argp_time = {
+    options_time, &parser_time,
+    "DURATION",   "Reserves the server for some time.",
+    NULL,         NULL,
+    NULL};
+
+static struct argp_option options_check[] = {
+    {"silent",  's', 0, 0, "Don't print anything, just return status value.", 0},
+    {"count",   'n', "COUNT", 0, "How many queued jobs to view.", 0},
+    {"verbose", 'V', 0, 0, "Give verbose output.",          0},
+    {0,         0,   0, 0, 0,                               0},
+};
+
+static struct argp argp_check = {
+    options_check, &parser_check, NULL, "View running and queued jobs.",
+    NULL,          NULL,          NULL,
+};
+
+static struct argp_option options_dequeue[] = {
+    {"verbose", 'V', 0, 0, "Give verbose output.", 0},
+    {0,         0,   0, 0, 0,                      0},
+};
+
+static struct argp argp_dequeue = {
+    options_dequeue,    &parser_dequeue,    "JOB_ID",   "Dequeue a job.",
+    NULL,               NULL,               NULL,
+};
+
+static struct argp_option options_release[] = {
+    {"force", 'f', 0, 0, "Even if current job belongs to different user.", 0},
+    {"verbose", 'V', 0, 0, "Give verbose output.", 0},
+    {0, 0, 0, 0, 0, 0},
+};
+
+static struct argp argp_release = {
+    options_release,    &parser_release,    NULL,   "Release current job's lock. Does not terminate job.",
+    NULL,               NULL,               NULL,
+};
+
+static int send_ipc_request(int soc, const ipc_request* req) { /*{{{*/
     if (!req) {
         fprintf(stderr, "[bug]");
         return -1;
     }
     return send(soc, req, sizeof(ipc_request), 0);
-}/*}}}*/
+} /*}}}*/
 
-static int get_status(int soc, status_response *stat) {/*{{{*/
+static int get_status(int soc, status_response* stat) { /*{{{*/
     if (!stat) return -1;
     if (recv(soc, stat, sizeof(status_response), 0) < 0) {
         return -1;
     }
     return 0;
-}/*}}}*/
+} /*}}}*/
 
-int subcmd_run(int argc, char **argv) { /*{{{*/
+int subcmd_run(int argc, char** argv) { /*{{{*/
     struct args_run args = {NULL, NULL, 0, 0};
 
     int soc;
@@ -37,7 +97,7 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
     ipc_request req;
     status_response resp;
 
-    argp_parse(&argp_run, argc - 1, argv + 1, 0, 0, (void *)&args);
+    argp_parse(&argp_run, argc - 1, argv + 1, 0, 0, (void*)&args);
 
     if (!args.cmd) {
         fprintf(stderr, "[error] No command found after parsing.\n");
@@ -47,7 +107,7 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
     if (args.verbose) {
         printf("Command (argc=%d): ", args.n_cmd_args);
 
-        for (char **cmd_part = args.cmd; *cmd_part; cmd_part++) {
+        for (char** cmd_part = args.cmd; *cmd_part; cmd_part++) {
             printf("%s ", *cmd_part);
         }
         printf("\n");
@@ -138,7 +198,7 @@ int subcmd_run(int argc, char **argv) { /*{{{*/
     return -1;
 } /*}}}*/
 
-int subcmd_time(int argc, char **argv) { /*{{{*/
+int subcmd_time(int argc, char** argv) { /*{{{*/
     struct args_time args = {NULL, -1, 0};
     job_descriptor job = {0};
     ipc_request req;
@@ -146,7 +206,7 @@ int subcmd_time(int argc, char **argv) { /*{{{*/
 
     int soc;
 
-    argp_parse(&argp_time, argc - 1, argv + 1, 0, 0, (void *)&args);
+    argp_parse(&argp_time, argc - 1, argv + 1, 0, 0, (void*)&args);
 
     if (args.verbose) {
         if (args.seconds <= 0) {
@@ -193,23 +253,25 @@ int subcmd_time(int argc, char **argv) { /*{{{*/
     }
 
     if (resp.status != STATUS_OK) {
-        fprintf(stderr, "Could not reserve time slot. Perhaps the server is already in use?");
+        fprintf(stderr,
+                "Could not reserve time slot. Perhaps the server is already in "
+                "use?");
         return -1;
     }
 
     return 0;
 } /*}}}*/
 
-int subcmd_check(int argc UNUSED, char **argv UNUSED) { /*{{{*/
+int subcmd_check(int argc UNUSED, char** argv UNUSED) { /*{{{*/
     struct args_check args = {.n = 5};
     info_request info = {0};
     ipc_request req;
-    queue_info_response_header *resp_header;
-    char *resp_buf;
+    queue_info_response_header* resp_header;
+    char* resp_buf;
     unsigned int resp_maxlen;
     int soc;
 
-    int ret = argp_parse(&argp_check, argc - 1, argv + 1, 0, 0, (void *)&args);
+    int ret = argp_parse(&argp_check, argc - 1, argv + 1, 0, 0, (void*)&args);
     if (ret != 0) {
         exit(-1);
     }
@@ -241,22 +303,23 @@ int subcmd_check(int argc UNUSED, char **argv UNUSED) { /*{{{*/
         return -1;
     }
 
-    job_descriptor *jobs =
-        (job_descriptor *)(resp_buf + sizeof(queue_info_response_header));
-    resp_header = (queue_info_response_header *)resp_buf;
+    job_descriptor* jobs =
+        (job_descriptor*)(resp_buf + sizeof(queue_info_response_header));
+    resp_header = (queue_info_response_header*)resp_buf;
     if (!args.silence) {
         if (resp_header->currently_running) {
             printf(CLR_RED "** A job is currently running **\n" CLR_END);
             printf("%d other jobs are queued.\n", resp_header->total_count - 1);
             char s_time[32];
             strftime(s_time, sizeof(s_time), "%a %e %b %T",
-                    localtime(&jobs[0].t_started));
+                     localtime(&jobs[0].t_started));
             printf("Current job started .. " CLR_BLUE "%s\n" CLR_END, s_time);
 
             strftime(s_time, sizeof(s_time), "%a %e %b %T",
-                    localtime(&jobs[0].timeslot.t_end));
+                     localtime(&jobs[0].timeslot.t_end));
             if (jobs[0].job_type == JOB_TIMESLOT) {
-                printf("It will end at ....... " CLR_BLUE "%s\n" CLR_END, s_time);
+                printf("It will end at ....... " CLR_BLUE "%s\n" CLR_END,
+                       s_time);
             }
         } else {
             printf("%d jobs are queued, none are running.\n",
@@ -264,21 +327,24 @@ int subcmd_check(int argc UNUSED, char **argv UNUSED) { /*{{{*/
         }
 
         if (resp_header->resp_count > 0) {
-            const char *head_fmt = " %4s | %-8s | %-8s | %-19s | %s\n";
-            const char *tab_fmt = "%4d | %-8s | %-8s | %-19s | %s\n";
+            const char* head_fmt = " %4s | %-8s | %-8s | %-19s | %s\n";
+            const char* tab_fmt = "%4d | %-8s | %-8s | %-19s | %s\n";
 
-            printf(head_fmt, "uuid", "type", "user", "time submitted", "message");
+            printf(head_fmt, "uuid", "type", "user", "time submitted",
+                   "message");
             printf(head_fmt, "---", "---", "---", "---", "---");
 
             char time_buf[32];
 
             for (int i = 0; i < (int)resp_header->resp_count; i++) {
-                struct passwd *pwd = getpwuid(jobs[i].uid);
+                struct passwd* pwd = getpwuid(jobs[i].uid);
                 strftime(time_buf, sizeof(time_buf), "%a %e %b %T",
                          localtime(&jobs[i].t_submitted));
 
-                if (resp_header->currently_running && i == 0) printf(CLR_BLUE ">");
-                else printf(" ");
+                if (resp_header->currently_running && i == 0)
+                    printf(CLR_BLUE ">");
+                else
+                    printf(" ");
 
                 printf(tab_fmt, jobs[i].job_uuid, jobtype_lbl[jobs[i].job_type],
                        pwd ? pwd->pw_name : "---", time_buf, jobs[i].msg);
@@ -291,14 +357,13 @@ int subcmd_check(int argc UNUSED, char **argv UNUSED) { /*{{{*/
     return resp_header->currently_running;
 } /*}}}*/
 
-int subcmd_dequeue(int argc, char **argv) { /*{{{*/
+int subcmd_dequeue(int argc, char** argv) { /*{{{*/
     struct args_dequeue args = {.job_id = -1, .verbose = 0};
     ipc_request req;
     status_response stat;
     int soc;
 
-    int ret =
-        argp_parse(&argp_dequeue, argc - 1, argv + 1, 0, 0, (void *)&args);
+    int ret = argp_parse(&argp_dequeue, argc - 1, argv + 1, 0, 0, (void*)&args);
     if (ret != 0) {
         if (ret == EINVAL) {
             fprintf(stderr, "Invalid job ID.\n");
@@ -339,3 +404,42 @@ int subcmd_dequeue(int argc, char **argv) { /*{{{*/
 
     return 0;
 } /*}}}*/
+
+int subcmd_release(int argc, char** argv) {// {{{
+    struct args_release args = {.force = 0, .verbose = 0};
+    ipc_request req;
+    status_response stat;
+    int soc;
+
+    int ret = argp_parse(&argp_release, argc - 1, argv + 1, 0, 0, (void*)&args);
+    if (ret != 0) {
+        exit(-1);
+    }
+
+    req.req_type = IPCREQ_RELEASE;
+    req.rel.force = args.force;
+
+    if ((soc = connect_to_server(socket_addr)) < 0) {
+        fprintf(stderr, "[error] Failed to connect to daemon.\n");
+        return -1;
+    }
+
+    if (send_ipc_request(soc, &req) < 0) {
+        perror("send");
+        return -1;
+    }
+
+    if (get_status(soc, &stat) < 0) {
+        perror("get_status");
+        return -1;
+    }
+
+    if (stat.status == STATUS_OK) {
+        printf("Succesfully released lock.\n");
+    } else {
+        printf("Release failed. Status = %d\n", stat.status);
+        return -1;
+    }
+
+    return 0;
+}// }}}

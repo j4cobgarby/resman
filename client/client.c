@@ -25,6 +25,8 @@ int main(int argc, char **argv) { /*{{{*/
         return subcmd_check(argc, argv);
     } else if (!strcmp(argv[1], "dequeue") || !strcmp(argv[1], "d")) {
         return subcmd_dequeue(argc, argv);
+    } else if (!strcmp(argv[1], "release") || !strcmp(argv[1], "R")) {
+        return subcmd_release(argc, argv);
     } else if (!strcmp(argv[1], "version") || !strcmp(argv[1], "v")) {
         printf("Resman client version " CLIENT_VER_STRING ".\n");
     } else {
