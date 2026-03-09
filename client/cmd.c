@@ -280,6 +280,11 @@ int subcmd_check(int argc UNUSED, char** argv UNUSED) { /*{{{*/
     req.req_type = IPCREQ_VIEW_QUEUE;
     req.info = info;
 
+    if (info.n_view <= 0) {
+        fprintf(stderr, "[error] n must be > 0\n");
+        return -1;
+    }
+
     if ((soc = connect_to_server(socket_addr)) < 0) {
         fprintf(stderr, "[error] Failed to connect to daemon.\n");
         return -1;
