@@ -7,7 +7,7 @@
 
 void print_subcmds(char *prog) { /*{{{*/
     fprintf(stderr, "Usage: %s SUBCOMMAND [OPTION...]\n", prog);
-    fprintf(stderr, "Valid subcommands: [r]un, [t]ime, [c]heck, [d]equeue\n");
+    fprintf(stderr, "Valid subcommands: [r]un, [t]ime, [c]heck, [d]equeue, [R]elease\n");
 } /*}}}*/
 
 static unsigned int parse_duration(const char *s) { /*{{{*/
