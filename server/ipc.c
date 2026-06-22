@@ -121,11 +121,11 @@ int handle_client(int soc_client) { /*{{{*/
             send_status(soc_client, &resp);
             break;
         case IPCREQ_VIEW_QUEUE:
-            info_request info = req.info;
+            const info_request info = req.info;
             send_queue_info(soc_client, info.n_view);
             break;
         case IPCREQ_DEQUEUE:
-            dequeue_request deq = req.deq;
+            const dequeue_request deq = req.deq;
             RESMAND_INFO("Received dequeue request for job %d\n", deq.job_uuid);
 
             pthread_mutex_lock(&mut_rj);
@@ -153,7 +153,7 @@ int handle_client(int soc_client) { /*{{{*/
             send_status(soc_client, &resp);
             break;
         case IPCREQ_RELEASE:
-            release_request rel = req.rel;
+            const release_request rel = req.rel;
 
             if (!running_job) {
                 RESMAND_INFO("Received manual release request by user %d, but "
