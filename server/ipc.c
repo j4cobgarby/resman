@@ -25,7 +25,7 @@ int make_soc_listen(const char *addr) { /*{{{*/
     sa_local.sun_family = AF_UNIX;
     sa_local.sun_path[0] = '\0';
     strncpy(sa_local.sun_path + 1, addr, strlen(addr));
-    
+
     sa_len = offsetof(struct sockaddr_un, sun_path) + 1 + strlen(addr);
 
     if (bind(soc_listen, (struct sockaddr *)&sa_local, sa_len) < 0) {
@@ -126,14 +126,28 @@ int handle_client(int soc_client) { /*{{{*/
         dequeue_request deq = req.deq;
         RESMAND_INFO("Received dequeue request for job %d\n", deq.job_uuid);
 
+        pthread_mutex_lock(&mut_rj);
         pthread_mutex_lock(&mut_q);
-        queued_job *deq_job = remove_job(&q, deq.job_uuid);
+
+        if (running_job && running_job->job.job_uuid == deq.job_uuid) {
+            RESMAND_ERROR("Refusing to dequeue currently running job\n")
+            resp.status = STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING;
+        } else {
+            queued_job *deq_job = remove_job(&q, deq.job_uuid);
+            if (!deq_job) {
+                RESMAND_ERROR("Failed to dequeue job %d: not found in queue"
+                              "\n", deq.job_uuid);
+                resp.status = STATUS_DEQ_FAIL_NO_SUCH_JOB;
+            } else {
+                RESMAND_INFO("Dequeueueueueing job %d\n", deq_job->job.job_uuid);
+                free_queued_job(deq_job);
+                resp.status = STATUS_OK;
+            }
+        }
+
         pthread_mutex_unlock(&mut_q);
+        pthread_mutex_unlock(&mut_rj);
 
-        RESMAND_INFO("Dequeued job %lu\n", (unsigned long)deq_job);
-
-        free_queued_job(deq_job);
-        resp.status = deq_job ? STATUS_OK : STATUS_FAIL;
         send_status(soc_client, &resp);
 
         disp_status();

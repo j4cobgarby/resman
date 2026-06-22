@@ -76,6 +76,9 @@ typedef struct status_response {
     enum {
         STATUS_OK,
         STATUS_FAIL,
+        // Dequeue request failure types
+        STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING,
+        STATUS_DEQ_FAIL_NO_SUCH_JOB,
     } status;
 } status_response;
 
