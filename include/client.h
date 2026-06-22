@@ -45,6 +45,7 @@ struct args_check {
 
 struct args_dequeue {
     uuid_t job_id;
+    int force;
     int verbose;
 };
 

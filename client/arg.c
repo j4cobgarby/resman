@@ -160,6 +160,9 @@ error_t parser_dequeue(int key, char *arg, struct argp_state *state) { /*{{{*/
             printf("[info] Verbose mode enabled.\n");
             args->verbose = 1;
             break;
+        case 'f':
+            args->force = 1;
+            break;
         case ARGP_KEY_ARG:
             if (state->arg_num == 0) {
                 errno = 0;

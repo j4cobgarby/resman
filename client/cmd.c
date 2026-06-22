@@ -50,6 +50,7 @@ static struct argp argp_check = {
 };
 
 static struct argp_option options_dequeue[] = {
+    {"force", 'f', 0, 0, "Even if target job belongs to different user.", 0},
     {"verbose", 'V', 0, 0, "Give verbose output.", 0},
     {0,         0,   0, 0, 0,                      0},
 };
@@ -362,7 +363,7 @@ int subcmd_check(int argc UNUSED, char** argv UNUSED) { /*{{{*/
 } /*}}}*/
 
 int subcmd_dequeue(int argc, char** argv) { /*{{{*/
-    struct args_dequeue args = {.job_id = -1, .verbose = 0};
+    struct args_dequeue args = {.job_id = -1, .force = 0, .verbose = 0};
     ipc_request req;
     status_response stat;
     int soc;
@@ -384,6 +385,7 @@ int subcmd_dequeue(int argc, char** argv) { /*{{{*/
     req.req_type = IPCREQ_DEQUEUE;
     req.deq.uid = getuid();
     req.deq.job_uuid = args.job_id;
+    req.deq.force = args.force;
 
     if ((soc = connect_to_server(socket_addr)) < 0) {
         fprintf(stderr, "[error] Failed to connect to daemon.\n");

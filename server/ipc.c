@@ -141,13 +141,17 @@ int handle_client(int soc_client) { /*{{{*/
                     RESMAND_ERROR("Failed to dequeue job %d: not found in queue"
                                   "\n", deq.job_uuid);
                     resp.status = STATUS_DEQ_FAIL_NO_SUCH_JOB;
-                } else if (target_job->job.uid != deq.uid) {
-                    RESMAND_ERROR("Refusing to dequeue job %d owned by %d\n",
-                                  target_job->job.job_uuid, target_job->job.uid);
+                } else if (target_job->job.uid != deq.uid && !deq.force) {
+                    RESMAND_ERROR("Refusing to dequeue job %d owned by %d "
+                                  "(force: %d)\n",
+                                  target_job->job.job_uuid, target_job->job.uid,
+                                  deq.force);
                     resp.status = STATUS_DEQ_FAIL_NOT_YOUR_JOB;
                 } else {
-                    RESMAND_INFO("Dequeueueueueing job %d\n",
-                                 target_job->job.job_uuid);
+                    RESMAND_INFO("Dequeueueueueing job %d owned by %d (force: "
+                                 "%d)\n",
+                                 target_job->job.job_uuid, target_job->job.uid,
+                                 deq.force)
                     // This searches the queue again (cf. find_job above), but
                     // it's fine since we hold mut_q throughout
                     queued_job *deq_job = remove_job(&q, deq.job_uuid);
