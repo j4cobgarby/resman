@@ -424,7 +424,7 @@ int subcmd_release(int argc, char** argv) {// {{{
     req.rel.force = args.force;
 
     if ((soc = connect_to_server(socket_addr)) < 0) {
-        fprintf(stderr, "[error] Failed to connect to daemon.\n");
+        fprintf(stderr, "[error] Failed to connect to daemon\n");
         return -1;
     }
 
@@ -439,9 +439,9 @@ int subcmd_release(int argc, char** argv) {// {{{
     }
 
     if (stat.status == STATUS_OK) {
-        printf("Succesfully released lock.\n");
+        printf("Successfully released lock\n");
     } else {
-        printf("Release failed. Status = %d\n", stat.status);
+        fprintf(stderr, "[error] Release failed (code %d)\n", stat.status);
         return -1;
     }
 
