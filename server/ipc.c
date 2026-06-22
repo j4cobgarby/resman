@@ -142,12 +142,14 @@ int handle_client(int soc_client) { /*{{{*/
         release_request rel = req.rel;
 
         if (!running_job) {
-            RESMAND_INFO("Received manual release request, but server is not "
-                         "reserved. Nothing to do.\n")
+            RESMAND_INFO("Received manual release request by user %d, but "
+                         "server is not reserved. Nothing to do.\n",
+                         rel.uid)
             resp.status = STATUS_OK;
         } else {
-            RESMAND_INFO("Received manual release request (force=%d), cancelling current running job %d\n",
-                         rel.force, running_job->job.job_uuid);
+            RESMAND_INFO("Received manual release request by user %d (force: "
+                         "%d), cancelling current running job %d\n",
+                         rel.uid, rel.force, running_job->job.job_uuid);
             pthread_mutex_lock(&mut_rj);
             running_job->manually_released = 1;
             pthread_mutex_unlock(&mut_rj);

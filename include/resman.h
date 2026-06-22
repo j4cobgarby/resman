@@ -62,6 +62,7 @@ typedef struct dequeue_request {
 } dequeue_request;
 
 typedef struct release_request {
+    uid_t uid;
     int force;
 } release_request;
 
