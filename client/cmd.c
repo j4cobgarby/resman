@@ -208,14 +208,13 @@ int subcmd_time(int argc, char** argv) { /*{{{*/
 
     argp_parse(&argp_time, argc - 1, argv + 1, 0, 0, (void*)&args);
 
-    if (args.verbose) {
-        if (args.seconds <= 0) {
-            fprintf(stderr, "No duration was given.\n");
-            return -1;
-        } else {
-            printf("Duration: %d seconds\n", args.seconds);
-        }
+    if (args.seconds <= 0) {
+        fprintf(stderr, "[error] Invalid duration, must be > 0 seconds.\n");
+        return -1;
+    }
 
+    if (args.verbose) {
+        printf("Duration: %d seconds\n", args.seconds);
         if (args.msg) {
             printf("Message: %s\n", args.msg);
         } else {
