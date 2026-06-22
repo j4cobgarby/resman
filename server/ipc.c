@@ -126,7 +126,8 @@ int handle_client(int soc_client) { /*{{{*/
             break;
         case IPCREQ_DEQUEUE:
             const dequeue_request deq = req.deq;
-            RESMAND_INFO("Received dequeue request for job %d\n", deq.job_uuid);
+            RESMAND_INFO("Received dequeue request for job %d from user %d\n",
+                         deq.job_uuid, deq.uid);
 
             pthread_mutex_lock(&mut_rj);
             pthread_mutex_lock(&mut_q);
@@ -135,13 +136,21 @@ int handle_client(int soc_client) { /*{{{*/
                 RESMAND_ERROR("Refusing to dequeue currently running job\n")
                 resp.status = STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING;
             } else {
-                queued_job *deq_job = remove_job(&q, deq.job_uuid);
-                if (!deq_job) {
+                queued_job *target_job = find_job(&q, deq.job_uuid);
+                if (!target_job) {
                     RESMAND_ERROR("Failed to dequeue job %d: not found in queue"
                                   "\n", deq.job_uuid);
                     resp.status = STATUS_DEQ_FAIL_NO_SUCH_JOB;
+                } else if (target_job->job.uid != deq.uid) {
+                    RESMAND_ERROR("Refusing to dequeue job %d owned by %d\n",
+                                  target_job->job.job_uuid, target_job->job.uid);
+                    resp.status = STATUS_DEQ_FAIL_NOT_YOUR_JOB;
                 } else {
-                    RESMAND_INFO("Dequeueueueueing job %d\n", deq_job->job.job_uuid);
+                    RESMAND_INFO("Dequeueueueueing job %d\n",
+                                 target_job->job.job_uuid);
+                    // This searches the queue again (cf. find_job above), but
+                    // it's fine since we hold mut_q throughout
+                    queued_job *deq_job = remove_job(&q, deq.job_uuid);
                     free_queued_job(deq_job);
                     resp.status = STATUS_OK;
                 }

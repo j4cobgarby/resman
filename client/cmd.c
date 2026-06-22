@@ -382,6 +382,7 @@ int subcmd_dequeue(int argc, char** argv) { /*{{{*/
     }
 
     req.req_type = IPCREQ_DEQUEUE;
+    req.deq.uid = getuid();
     req.deq.job_uuid = args.job_id;
 
     if ((soc = connect_to_server(socket_addr)) < 0) {
@@ -408,6 +409,9 @@ int subcmd_dequeue(int argc, char** argv) { /*{{{*/
             break;
         case STATUS_DEQ_FAIL_NO_SUCH_JOB:
             fprintf(stderr, "[error] Failed to dequeue job %d: job not found in queue\n", args.job_id);
+            break;
+        case STATUS_DEQ_FAIL_NOT_YOUR_JOB:
+            fprintf(stderr, "[error] Failed to dequeue job %d submitted by another user\n", args.job_id);
             break;
         default:
             fprintf(stderr, "[error] Dequeue failed (code: %d)\n", stat.status);

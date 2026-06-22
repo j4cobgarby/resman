@@ -58,6 +58,7 @@ typedef struct info_request {
 } info_request;
 
 typedef struct dequeue_request {
+    uid_t uid;
     uuid_t job_uuid;
 } dequeue_request;
 
@@ -79,6 +80,7 @@ typedef struct status_response {
         // Dequeue request failure types
         STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING,
         STATUS_DEQ_FAIL_NO_SUCH_JOB,
+        STATUS_DEQ_FAIL_NOT_YOUR_JOB,
         // Release request status types
         STATUS_REL_OK_SERVER_IDLE,
         STATUS_REL_FAIL_NOT_YOUR_JOB,
