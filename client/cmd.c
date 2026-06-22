@@ -33,7 +33,7 @@ static struct argp_option options_time[] = {
 
 static struct argp argp_time = {
     options_time, &parser_time,
-    "DURATION",   "Reserves the server for some time.",
+    "DURATION",   "Reserves the server for the given amount of time, specified using suffixes 's', 'm', or 'h' to specify seconds, minutes, or hours. These can be combined (e.g. 3h10m5s).",
     NULL,         NULL,
     NULL};
 
