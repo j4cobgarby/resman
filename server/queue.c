@@ -22,6 +22,17 @@ queued_job *deq_job(queued_job **q) { /*{{{*/
     return ret;
 } /*}}}*/
 
+/* Search the queue for a job with a given UUID. */
+queued_job *find_job(queued_job **q, const uuid_t uuid) {
+    for (queued_job *ret = *q; ret; ret = ret->next) {
+        if (uuid == ret->job.job_uuid) {
+            return ret;
+        }
+    }
+
+    return NULL; /* Not found */
+}
+
 /* Remove a job from the middle of the queue with a given UUID. */
 queued_job *remove_job(queued_job **q, uuid_t uuid) {/*{{{*/
     queued_job *ret = *q;

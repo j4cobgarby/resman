@@ -33,7 +33,7 @@ static struct argp_option options_time[] = {
 
 static struct argp argp_time = {
     options_time, &parser_time,
-    "DURATION",   "Reserves the server for some time.",
+    "DURATION",   "Reserves the server for the given amount of time, specified using suffixes 's', 'm', or 'h' to specify seconds, minutes, or hours. These can be combined (e.g. 3h10m5s).",
     NULL,         NULL,
     NULL};
 
@@ -50,6 +50,7 @@ static struct argp argp_check = {
 };
 
 static struct argp_option options_dequeue[] = {
+    {"force", 'f', 0, 0, "Even if target job belongs to different user.", 0},
     {"verbose", 'V', 0, 0, "Give verbose output.", 0},
     {0,         0,   0, 0, 0,                      0},
 };
@@ -208,14 +209,13 @@ int subcmd_time(int argc, char** argv) { /*{{{*/
 
     argp_parse(&argp_time, argc - 1, argv + 1, 0, 0, (void*)&args);
 
-    if (args.verbose) {
-        if (args.seconds <= 0) {
-            fprintf(stderr, "No duration was given.\n");
-            return -1;
-        } else {
-            printf("Duration: %d seconds\n", args.seconds);
-        }
+    if (args.seconds <= 0) {
+        fprintf(stderr, "[error] Invalid duration, must be > 0 seconds.\n");
+        return -1;
+    }
 
+    if (args.verbose) {
+        printf("Duration: %d seconds\n", args.seconds);
         if (args.msg) {
             printf("Message: %s\n", args.msg);
         } else {
@@ -254,8 +254,8 @@ int subcmd_time(int argc, char** argv) { /*{{{*/
 
     if (resp.status != STATUS_OK) {
         fprintf(stderr,
-                "Could not reserve time slot. Perhaps the server is already in "
-                "use?");
+                "[error] Could not reserve timeslot. Perhaps the server "
+                "is already in use?\n");
         return -1;
     }
 
@@ -363,7 +363,7 @@ int subcmd_check(int argc UNUSED, char** argv UNUSED) { /*{{{*/
 } /*}}}*/
 
 int subcmd_dequeue(int argc, char** argv) { /*{{{*/
-    struct args_dequeue args = {.job_id = -1, .verbose = 0};
+    struct args_dequeue args = {.job_id = -1, .force = 0, .verbose = 0};
     ipc_request req;
     status_response stat;
     int soc;
@@ -383,7 +383,9 @@ int subcmd_dequeue(int argc, char** argv) { /*{{{*/
     }
 
     req.req_type = IPCREQ_DEQUEUE;
-    req.deq.job_uuid = (uuid_t)args.job_id;
+    req.deq.uid = getuid();
+    req.deq.job_uuid = args.job_id;
+    req.deq.force = args.force;
 
     if ((soc = connect_to_server(socket_addr)) < 0) {
         fprintf(stderr, "[error] Failed to connect to daemon.\n");
@@ -400,11 +402,22 @@ int subcmd_dequeue(int argc, char** argv) { /*{{{*/
         return -1;
     }
 
-    if (stat.status == STATUS_OK) {
-        printf("Succesfully dequeued job %d\n", args.job_id);
-    } else {
-        printf("Dequeue failed. Status = %d\n", stat.status);
-        return -1;
+    switch (stat.status) {
+        case STATUS_OK:
+            printf("Successfully dequeued job %d\n", args.job_id);
+            break;
+        case STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING:
+            fprintf(stderr, "[error] Cannot dequeue currently running job. Consider releasing the lock instead.\n");
+            break;
+        case STATUS_DEQ_FAIL_NO_SUCH_JOB:
+            fprintf(stderr, "[error] Failed to dequeue job %d: job not found in queue\n", args.job_id);
+            break;
+        case STATUS_DEQ_FAIL_NOT_YOUR_JOB:
+            fprintf(stderr, "[error] Failed to dequeue job %d submitted by another user\n", args.job_id);
+            break;
+        default:
+            fprintf(stderr, "[error] Dequeue failed (code: %d)\n", stat.status);
+            return -1;
     }
 
     return 0;
@@ -422,10 +435,11 @@ int subcmd_release(int argc, char** argv) {// {{{
     }
 
     req.req_type = IPCREQ_RELEASE;
+    req.rel.uid = getuid();
     req.rel.force = args.force;
 
     if ((soc = connect_to_server(socket_addr)) < 0) {
-        fprintf(stderr, "[error] Failed to connect to daemon.\n");
+        fprintf(stderr, "[error] Failed to connect to daemon\n");
         return -1;
     }
 
@@ -439,11 +453,19 @@ int subcmd_release(int argc, char** argv) {// {{{
         return -1;
     }
 
-    if (stat.status == STATUS_OK) {
-        printf("Succesfully released lock.\n");
-    } else {
-        printf("Release failed. Status = %d\n", stat.status);
-        return -1;
+    switch (stat.status) {
+        case STATUS_OK:
+            printf("Successfully released lock\n");
+            break;
+        case STATUS_REL_OK_SERVER_IDLE:
+            printf("Server is not currently locked, no lock to release.\n");
+            break;
+        case STATUS_REL_FAIL_NOT_YOUR_JOB:
+            fprintf(stderr, "[error] Refusing to release lock held by another user, consider using --force.\n");
+            break;
+        default:
+            fprintf(stderr, "[error] Release failed (code %d)\n", stat.status);
+            return -1;
     }
 
     return 0;

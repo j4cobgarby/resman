@@ -3,9 +3,7 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <pwd.h>
 #include <signal.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -35,6 +33,7 @@ int main(void) { /*{{{*/
         " |  _ <  __/\\__ \\ | | | | | (_| | | | |\n"
         " |_| \\_\\___||___/_| |_| |_|\\__,_|_| |_|\n"
         "Version 0.0\n");
+    fflush(stdout);
 
     disp_status();
     int soc_listen, soc_client;
@@ -52,7 +51,7 @@ int main(void) { /*{{{*/
     }
 
     if (pthread_create(&thr_dispatcher, NULL, &dispatcher, NULL) != 0) {
-        fprintf(stderr, "pthread_create failed!.\n");
+        fprintf(stderr, "pthread_create failed\n");
         return EXIT_FAILURE;
     }
 
@@ -64,7 +63,7 @@ int main(void) { /*{{{*/
         }
 
         if (handle_client(soc_client) < 0) {
-            RESMAND_ERROR("Failed while handling a new client.\n");
+            RESMAND_ERROR("Failed while handling a new client\n");
         }
     }
 } /*}}}*/
@@ -94,7 +93,8 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
             switch (running_job->job.job_type) {
                 case JOB_TIMESLOT: {
                     if (running_job->manually_released || time(NULL) >= running_job->job.timeslot.t_end) {
-                        RESMAND_INFO("Job finished timeslot.\n");
+                        RESMAND_INFO("Timeslot job %d finished\n",
+                                     running_job->job.job_uuid);
 
                         pthread_mutex_lock(&mut_rj);
                         free_queued_job(running_job);
@@ -123,7 +123,7 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                         continue;
                     } else if (errno == ESRCH) {
                         /* The job has ended */
-                        RESMAND_INFO("Job finished, uuid=%d\n",
+                        RESMAND_INFO("Command job %d finished\n",
                                      running_job->job.job_uuid);
                         disp_status();
 
@@ -159,10 +159,11 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
                         RESMAND_INFO(
-                            "Sending start signal to job(pid=%d, "
-                            "job_uuid=%d).\n",
+                            "Starting command job %d (pid: %d) for user %d: '%s'\n",
+                            running_job->job.job_uuid,
                             running_job->job.cmd.pid,
-                            running_job->job.job_uuid);
+                            running_job->job.uid,
+                            running_job->job.msg);
                         /* Tell the waiting job stub to start the desired
                          * process */
                         running_job->job.t_started = time(NULL);
@@ -170,8 +171,8 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                         break;
                     case JOB_TIMESLOT:
                         RESMAND_INFO(
-                            "Serving time slot request. Sleeping for %d "
-                            "secs.\n",
+                            "Starting timeslot job %d. Sleeping for %ds\n",
+                            running_job->job.job_uuid,
                             running_job->job.timeslot.secs);
                         running_job->job.t_started = time(NULL);
                         running_job->job.timeslot.t_end =
@@ -179,7 +180,7 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                             running_job->job.timeslot.secs;
                         break;
                     default:
-                        RESMAND_ERROR("Got malformed job type: %d.\n",
+                        RESMAND_ERROR("Received invalid job type: %d\n",
                                       running_job->job.job_type);
                 }
             }
@@ -225,7 +226,7 @@ int send_queue_info(int soc_client, unsigned int count) { /* {{{ */
     pthread_mutex_unlock(&mut_rj);
 
     if (send(soc_client, ser_buf, buf_len, 0) < 0) {
-        RESMAND_ERROR("Failed sending queue response to client.\n");
+        RESMAND_ERROR("Failed sending queue response to client\n");
         free(ser_buf);
         return -1;
     }
@@ -239,7 +240,7 @@ fail:
 } /* }}} */
 
 void sigint_handler(int sig UNUSED) { /*{{{*/
-    printf("Caught SIGINT: exiting.\n");
+    printf("Caught SIGINT, exiting\n");
     exit(EXIT_SUCCESS);
 } /*}}}*/
 
