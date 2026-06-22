@@ -105,9 +105,9 @@ int handle_client(int soc_client) { /*{{{*/
             case JOB_TIMESLOT:
                 if (running_job || peek_job(q, 0)) {
                     RESMAND_INFO(
-                        "User %d requested a timeslot, but server is "
+                        "Rejecting timeslot job %d for user %d: server is "
                         "already reserved.\n",
-                        job.uid);
+                        job.job_uuid, job.uid);
                     resp.status = STATUS_FAIL;
                 } else {
                     pthread_mutex_lock(&mut_q);
