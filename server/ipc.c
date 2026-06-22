@@ -140,16 +140,20 @@ int handle_client(int soc_client) { /*{{{*/
         disp_status();
     } else if (req.req_type == IPCREQ_RELEASE) {
         release_request rel = req.rel;
-        RESMAND_INFO("Received manual release request\n");
 
         if (!running_job) {
+            RESMAND_INFO("Received manual release request, but server is not "
+                         "reserved. Nothing to do.\n")
             resp.status = STATUS_OK;
         } else {
-            printf("Releasing lock. Force=%d\n", rel.force);
+            RESMAND_INFO("Received manual release request (force=%d), cancelling current running job %d\n",
+                         rel.force, running_job->job.job_uuid);
             pthread_mutex_lock(&mut_rj);
             running_job->manually_released = 1;
             pthread_mutex_unlock(&mut_rj);
+            resp.status = STATUS_OK;
         }
+        send_status(soc_client, &resp);
     } else {
         RESMAND_ERROR("Invalid request type: %d\n", req.req_type);
         close(soc_client);
