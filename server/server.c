@@ -51,7 +51,7 @@ int main(void) { /*{{{*/
     }
 
     if (pthread_create(&thr_dispatcher, NULL, &dispatcher, NULL) != 0) {
-        fprintf(stderr, "pthread_create failed!\n");
+        fprintf(stderr, "pthread_create failed\n");
         return EXIT_FAILURE;
     }
 
@@ -63,7 +63,7 @@ int main(void) { /*{{{*/
         }
 
         if (handle_client(soc_client) < 0) {
-            RESMAND_ERROR("Failed while handling a new client.\n");
+            RESMAND_ERROR("Failed while handling a new client\n");
         }
     }
 } /*}}}*/
@@ -93,7 +93,7 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
             switch (running_job->job.job_type) {
                 case JOB_TIMESLOT: {
                     if (running_job->manually_released || time(NULL) >= running_job->job.timeslot.t_end) {
-                        RESMAND_INFO("Timeslot job %d finished.\n",
+                        RESMAND_INFO("Timeslot job %d finished\n",
                                      running_job->job.job_uuid);
 
                         pthread_mutex_lock(&mut_rj);
@@ -159,7 +159,7 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
                         RESMAND_INFO(
-                            "Starting command job %d (pid=%d) for user %d: '%s'\n",
+                            "Starting command job %d (pid: %d) for user %d: '%s'\n",
                             running_job->job.job_uuid,
                             running_job->job.cmd.pid,
                             running_job->job.uid,
@@ -180,7 +180,7 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                             running_job->job.timeslot.secs;
                         break;
                     default:
-                        RESMAND_ERROR("Got malformed job type: %d.\n",
+                        RESMAND_ERROR("Received invalid job type: %d\n",
                                       running_job->job.job_type);
                 }
             }
@@ -226,7 +226,7 @@ int send_queue_info(int soc_client, unsigned int count) { /* {{{ */
     pthread_mutex_unlock(&mut_rj);
 
     if (send(soc_client, ser_buf, buf_len, 0) < 0) {
-        RESMAND_ERROR("Failed sending queue response to client.\n");
+        RESMAND_ERROR("Failed sending queue response to client\n");
         free(ser_buf);
         return -1;
     }
@@ -240,7 +240,7 @@ fail:
 } /* }}} */
 
 void sigint_handler(int sig UNUSED) { /*{{{*/
-    printf("Caught SIGINT: exiting.\n");
+    printf("Caught SIGINT, exiting\n");
     exit(EXIT_SUCCESS);
 } /*}}}*/
 
