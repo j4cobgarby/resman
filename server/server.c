@@ -33,6 +33,7 @@ int main(void) { /*{{{*/
         " |  _ <  __/\\__ \\ | | | | | (_| | | | |\n"
         " |_| \\_\\___||___/_| |_| |_|\\__,_|_| |_|\n"
         "Version 0.0\n");
+    fflush(stdout);
 
     disp_status();
     int soc_listen, soc_client;
