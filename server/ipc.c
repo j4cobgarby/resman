@@ -126,32 +126,34 @@ int handle_client(int soc_client) { /*{{{*/
             break;
         case IPCREQ_DEQUEUE:
             const dequeue_request deq = req.deq;
-            RESMAND_INFO("Received dequeue request for job %d from user %d\n",
-                         deq.job_uuid, deq.uid);
 
             pthread_mutex_lock(&mut_rj);
             pthread_mutex_lock(&mut_q);
 
             if (running_job && running_job->job.job_uuid == deq.job_uuid) {
-                RESMAND_ERROR("Refusing to dequeue currently running job\n")
+                RESMAND_ERROR("Received dequeue request by user %d for job %d, "
+                              "but refusing to dequeue currently running job\n",
+                              deq.uid, deq.job_uuid)
                 resp.status = STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING;
             } else {
                 queued_job *target_job = find_job(&q, deq.job_uuid);
                 if (!target_job) {
-                    RESMAND_ERROR("Failed to dequeue job %d: not found in queue"
-                                  "\n", deq.job_uuid);
+                    RESMAND_ERROR("Received dequeue request by user %d for job "
+                                  "%d, but no such job in queue\n",
+                                  deq.uid, deq.job_uuid);
                     resp.status = STATUS_DEQ_FAIL_NO_SUCH_JOB;
                 } else if (target_job->job.uid != deq.uid && !deq.force) {
-                    RESMAND_ERROR("Refusing to dequeue job %d owned by %d "
-                                  "(force: %d)\n",
-                                  target_job->job.job_uuid, target_job->job.uid,
+                    RESMAND_ERROR("Received dequeue request by user %d for job "
+                                  "%d owned by %d (force: %d), refusing to "
+                                  "dequeue\n",
+                                  deq.uid, deq.job_uuid, target_job->job.uid,
                                   deq.force);
                     resp.status = STATUS_DEQ_FAIL_NOT_YOUR_JOB;
                 } else {
-                    RESMAND_INFO("Dequeueueueueing job %d owned by %d (force: "
-                                 "%d)\n",
-                                 target_job->job.job_uuid, target_job->job.uid,
-                                 deq.force)
+                    RESMAND_INFO("Received dequeue request by user %d for job "
+                                 "%d owned by %d (force: %d), dequeueing job\n",
+                                 deq.uid, deq.job_uuid, target_job->job.uid,
+                                 deq.force);
                     // This searches the queue again (cf. find_job above), but
                     // it's fine since we hold mut_q throughout
                     queued_job *deq_job = remove_job(&q, deq.job_uuid);
