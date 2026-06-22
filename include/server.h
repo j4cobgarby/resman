@@ -1,6 +1,10 @@
 // vim: fdm=marker
-#include "resman.h"
+#ifndef SERVER_H
+#define SERVER_H
+
 #include <pthread.h> /* pthread_mutex_* */
+
+#include "resman.h"
 
 #define LISTEN_QUEUE 8
 #define POLL_DELAY 2
@@ -35,3 +39,5 @@ int queue_len(queued_job *q);
 queued_job *remove_job(queued_job **q, uuid_t uuid);
 int send_queue_info(int soc_client, unsigned int count);
 void disp_status(void);
+
+#endif  /* SERVER_H */
