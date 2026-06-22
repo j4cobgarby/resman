@@ -78,43 +78,42 @@ int handle_client(int soc_client) { /*{{{*/
         job_descriptor job = req.job;
 
         if (job.job_type != JOB_CMD && job.job_type != JOB_TIMESLOT) {
-            RESMAND_ERROR("Unrecognised job type in request.\n");
+            RESMAND_ERROR("Invalid job type in request\n");
             goto _close;
         }
 
         job.job_uuid = next_uuid();
-        if (job.job_type == JOB_CMD) {
-            RESMAND_INFO(
-                "Received command job %d by user %d (pid: %d, msg: '%s')\n",
-                job.job_uuid, job.uid, job.cmd.pid, job.msg
-            );
-        } else {
-            RESMAND_INFO(
-                "Received timeslot job %d by user %d (time: %ds, msg: '%s')\n",
-                job.job_uuid, job.uid, job.timeslot.secs, job.msg
-            );
-        }
 
         switch (job.job_type) {
             case JOB_CMD:
+                RESMAND_INFO(
+                    "Received command job %d by user %d (pid: %d, msg: '%s')\n",
+                    job.job_uuid, job.uid, job.cmd.pid, job.msg
+                );
                 pthread_mutex_lock(&mut_q);
                 enq_job(&q, job);
                 pthread_mutex_unlock(&mut_q);
                 resp.status = STATUS_OK;
                 break;
             case JOB_TIMESLOT:
+                RESMAND_INFO(
+                    "Received timeslot job %d by user %d (time: %ds, msg: '%s')\n",
+                    job.job_uuid, job.uid, job.timeslot.secs, job.msg
+                );
+
                 if (running_job || peek_job(q, 0)) {
                     RESMAND_INFO(
-                        "Rejecting timeslot job %d for user %d: server is "
-                        "already reserved.\n",
-                        job.job_uuid, job.uid);
+                        "Rejecting timeslot job %d: server is already reserved\n",
+                        job.job_uuid
+                    );
                     resp.status = STATUS_FAIL;
-                } else {
-                    pthread_mutex_lock(&mut_q);
-                    enq_job(&q, job);
-                    pthread_mutex_unlock(&mut_q);
-                    resp.status = STATUS_OK;
+                    break;
                 }
+
+                pthread_mutex_lock(&mut_q);
+                enq_job(&q, job);
+                pthread_mutex_unlock(&mut_q);
+                resp.status = STATUS_OK;
                 break;
         }
 
