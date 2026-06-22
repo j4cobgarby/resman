@@ -93,7 +93,8 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
             switch (running_job->job.job_type) {
                 case JOB_TIMESLOT: {
                     if (running_job->manually_released || time(NULL) >= running_job->job.timeslot.t_end) {
-                        RESMAND_INFO("Job finished timeslot.\n");
+                        RESMAND_INFO("Timeslot job %d finished.\n",
+                                     running_job->job.job_uuid);
 
                         pthread_mutex_lock(&mut_rj);
                         free_queued_job(running_job);
@@ -122,7 +123,7 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                         continue;
                     } else if (errno == ESRCH) {
                         /* The job has ended */
-                        RESMAND_INFO("Job finished, uuid=%d\n",
+                        RESMAND_INFO("Command job %d finished\n",
                                      running_job->job.job_uuid);
                         disp_status();
 
@@ -158,10 +159,11 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
                         RESMAND_INFO(
-                            "Sending start signal to job(pid=%d, "
-                            "job_uuid=%d).\n",
+                            "Starting command job %d (pid=%d) for user %d: '%s'\n",
+                            running_job->job.job_uuid,
                             running_job->job.cmd.pid,
-                            running_job->job.job_uuid);
+                            running_job->job.uid,
+                            running_job->job.msg);
                         /* Tell the waiting job stub to start the desired
                          * process */
                         running_job->job.t_started = time(NULL);
@@ -169,8 +171,8 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                         break;
                     case JOB_TIMESLOT:
                         RESMAND_INFO(
-                            "Serving time slot request. Sleeping for %d "
-                            "secs.\n",
+                            "Starting timeslot job %d. Sleeping for %ds\n",
+                            running_job->job.job_uuid,
                             running_job->job.timeslot.secs);
                         running_job->job.t_started = time(NULL);
                         running_job->job.timeslot.t_end =

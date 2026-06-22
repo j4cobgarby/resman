@@ -85,13 +85,13 @@ int handle_client(int soc_client) { /*{{{*/
         job.job_uuid = next_uuid();
         if (job.job_type == JOB_CMD) {
             RESMAND_INFO(
-                "new job CMD(uid=%d job_uuid=%d pid=%d msg=%s)\n",
-                job.uid, job.job_uuid, job.cmd.pid, job.msg
+                "Received command job %d by user %d (pid: %d, msg: '%s')\n",
+                job.job_uuid, job.uid, job.cmd.pid, job.msg
             );
         } else {
             RESMAND_INFO(
-                "new job TIMESLOT(uid=%d job_uuid=%d time=%ds msg=%s)\n",
-                job.uid, job.job_uuid, job.timeslot.secs, job.msg
+                "Received timeslot job %d by user %d (time: %ds, msg: '%s')\n",
+                job.job_uuid, job.uid, job.timeslot.secs, job.msg
             );
         }
 
@@ -105,7 +105,7 @@ int handle_client(int soc_client) { /*{{{*/
             case JOB_TIMESLOT:
                 if (running_job || peek_job(q, 0)) {
                     RESMAND_INFO(
-                        "User %d wanted a timeslot, but server is "
+                        "User %d requested a timeslot, but server is "
                         "already reserved.\n",
                         job.uid);
                     resp.status = STATUS_FAIL;
@@ -125,13 +125,13 @@ int handle_client(int soc_client) { /*{{{*/
         send_queue_info(soc_client, info.n_view);
     } else if (req.req_type == IPCREQ_DEQUEUE) {
         dequeue_request deq = req.deq;
-        RESMAND_INFO("dequeue request (job_uuid=%d)\n", deq.job_uuid);
+        RESMAND_INFO("Received dequeue request for job %d\n", deq.job_uuid);
 
         pthread_mutex_lock(&mut_q);
         queued_job *deq_job = remove_job(&q, deq.job_uuid);
         pthread_mutex_unlock(&mut_q);
 
-        RESMAND_INFO("Dequeued job = %lu\n", (unsigned long)deq_job);
+        RESMAND_INFO("Dequeued job %lu\n", (unsigned long)deq_job);
 
         free_queued_job(deq_job);
         resp.status = deq_job ? STATUS_OK : STATUS_FAIL;
@@ -140,7 +140,7 @@ int handle_client(int soc_client) { /*{{{*/
         disp_status();
     } else if (req.req_type == IPCREQ_RELEASE) {
         release_request rel = req.rel;
-        RESMAND_INFO("release request\n");
+        RESMAND_INFO("Received manual release request\n");
 
         if (!running_job) {
             resp.status = STATUS_OK;
@@ -151,7 +151,7 @@ int handle_client(int soc_client) { /*{{{*/
             pthread_mutex_unlock(&mut_rj);
         }
     } else {
-        RESMAND_ERROR("Incorrect request type: %d\n", req.req_type);
+        RESMAND_ERROR("Invalid request type: %d\n", req.req_type);
         close(soc_client);
         return -1;
     }
