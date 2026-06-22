@@ -155,20 +155,46 @@ int handle_client(int soc_client) { /*{{{*/
         case IPCREQ_RELEASE:
             const release_request rel = req.rel;
 
+            pthread_mutex_lock(&mut_rj);
+
             if (!running_job) {
                 RESMAND_INFO("Received manual release request by user %d, but "
                              "server is not reserved. Nothing to do.\n",
                              rel.uid)
                 resp.status = STATUS_REL_OK_SERVER_IDLE;
             } else {
-                RESMAND_INFO("Received manual release request by user %d (force: "
-                             "%d), cancelling current running job %d\n",
-                             rel.uid, rel.force, running_job->job.job_uuid);
-                pthread_mutex_lock(&mut_rj);
-                running_job->manually_released = 1;
-                pthread_mutex_unlock(&mut_rj);
-                resp.status = STATUS_OK;
+                if (running_job->job.uid == rel.uid) {
+                    // Requesting user owns the job, ok
+                    RESMAND_INFO("Received manual release request by user %d "
+                                 "for their currently running job %d, "
+                                 "releasing lock\n",
+                                 rel.uid, running_job->job.job_uuid);
+                    running_job->manually_released = 1;
+                    resp.status = STATUS_OK;
+                } else {
+                    // Requesting user does not own the job, require force
+                    if (rel.force) {
+                        RESMAND_INFO("Received manual release request by user "
+                                     "%d for current running job %d owned by "
+                                     "%d (force: %d), releasing lock\n",
+                                     rel.uid, running_job->job.uid,
+                                     running_job->job.job_uuid, rel.force);
+                        running_job->manually_released = 1;
+                        resp.status = STATUS_OK;
+                    } else {
+                        RESMAND_ERROR("Received manual release request by user "
+                                      "%d for current running job %d owned by "
+                                      "%d (force: %d), refusing to release "
+                                      "lock\n",
+                                      rel.uid, running_job->job.job_uuid,
+                                      running_job->job.uid, rel.force);
+                        resp.status = STATUS_REL_FAIL_NOT_YOUR_JOB;
+                    }
+                }
             }
+
+            pthread_mutex_unlock(&mut_rj);
+
             send_status(soc_client, &resp);
             break;
         default:

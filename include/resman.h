@@ -81,6 +81,7 @@ typedef struct status_response {
         STATUS_DEQ_FAIL_NO_SUCH_JOB,
         // Release request status types
         STATUS_REL_OK_SERVER_IDLE,
+        STATUS_REL_FAIL_NOT_YOUR_JOB,
     } status;
 } status_response;
 
