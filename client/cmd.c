@@ -454,6 +454,9 @@ int subcmd_release(int argc, char** argv) {// {{{
         case STATUS_REL_OK_SERVER_IDLE:
             printf("Server is not currently locked, no lock to release.\n");
             break;
+        case STATUS_REL_FAIL_NOT_YOUR_JOB:
+            fprintf(stderr, "[error] Refusing to release lock held by another user, consider using --force.\n");
+            break;
         default:
             fprintf(stderr, "[error] Release failed (code %d)\n", stat.status);
             return -1;
