@@ -127,8 +127,8 @@ int handle_client(int soc_client) { /*{{{*/
         case IPCREQ_DEQUEUE:
             const dequeue_request deq = req.deq;
 
-            pthread_mutex_lock(&mut_rj);
             pthread_mutex_lock(&mut_q);
+            pthread_mutex_lock(&mut_rj);
 
             if (running_job && running_job->job.job_uuid == deq.job_uuid) {
                 RESMAND_ERROR("Received dequeue request by user %d for job %d, "
@@ -162,8 +162,8 @@ int handle_client(int soc_client) { /*{{{*/
                 }
             }
 
-            pthread_mutex_unlock(&mut_q);
             pthread_mutex_unlock(&mut_rj);
+            pthread_mutex_unlock(&mut_q);
 
             send_status(soc_client, &resp);
             break;
