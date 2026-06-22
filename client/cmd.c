@@ -253,8 +253,8 @@ int subcmd_time(int argc, char** argv) { /*{{{*/
 
     if (resp.status != STATUS_OK) {
         fprintf(stderr,
-                "Could not reserve time slot. Perhaps the server is already in "
-                "use?");
+                "[error] Could not reserve timeslot. Perhaps the server "
+                "is already in use?\n");
         return -1;
     }
 
