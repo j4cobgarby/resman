@@ -382,7 +382,7 @@ int subcmd_dequeue(int argc, char** argv) { /*{{{*/
     }
 
     req.req_type = IPCREQ_DEQUEUE;
-    req.deq.job_uuid = (uuid_t)args.job_id;
+    req.deq.job_uuid = args.job_id;
 
     if ((soc = connect_to_server(socket_addr)) < 0) {
         fprintf(stderr, "[error] Failed to connect to daemon.\n");
@@ -399,11 +399,19 @@ int subcmd_dequeue(int argc, char** argv) { /*{{{*/
         return -1;
     }
 
-    if (stat.status == STATUS_OK) {
-        printf("Succesfully dequeued job %d\n", args.job_id);
-    } else {
-        printf("Dequeue failed. Status = %d\n", stat.status);
-        return -1;
+    switch (stat.status) {
+        case STATUS_OK:
+            printf("Successfully dequeued job %d\n", args.job_id);
+            break;
+        case STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING:
+            fprintf(stderr, "[error] Cannot dequeue currently running job. Consider releasing the lock instead.\n");
+            break;
+        case STATUS_DEQ_FAIL_NO_SUCH_JOB:
+            fprintf(stderr, "[error] Failed to dequeue job %d: job not found in queue\n", args.job_id);
+            break;
+        default:
+            fprintf(stderr, "[error] Dequeue failed (code: %d)\n", stat.status);
+            return -1;
     }
 
     return 0;
