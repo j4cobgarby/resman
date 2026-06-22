@@ -51,7 +51,7 @@ int main(void) { /*{{{*/
     }
 
     if (pthread_create(&thr_dispatcher, NULL, &dispatcher, NULL) != 0) {
-        fprintf(stderr, "pthread_create failed!.\n");
+        fprintf(stderr, "pthread_create failed!\n");
         return EXIT_FAILURE;
     }
 
