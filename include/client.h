@@ -1,7 +1,9 @@
 // vim: fdm=marker
 #ifndef CLIENT_H
 #define CLIENT_H
+
 #include <argp.h>
+
 #include "resman.h"
 
 #define CLIENT_VER_STRING "0.0"
