@@ -159,7 +159,7 @@ int handle_client(int soc_client) { /*{{{*/
                 RESMAND_INFO("Received manual release request by user %d, but "
                              "server is not reserved. Nothing to do.\n",
                              rel.uid)
-                resp.status = STATUS_OK;
+                resp.status = STATUS_REL_OK_SERVER_IDLE;
             } else {
                 RESMAND_INFO("Received manual release request by user %d (force: "
                              "%d), cancelling current running job %d\n",

@@ -447,11 +447,16 @@ int subcmd_release(int argc, char** argv) {// {{{
         return -1;
     }
 
-    if (stat.status == STATUS_OK) {
-        printf("Successfully released lock\n");
-    } else {
-        fprintf(stderr, "[error] Release failed (code %d)\n", stat.status);
-        return -1;
+    switch (stat.status) {
+        case STATUS_OK:
+            printf("Successfully released lock\n");
+            break;
+        case STATUS_REL_OK_SERVER_IDLE:
+            printf("Server is not currently locked, no lock to release.\n");
+            break;
+        default:
+            fprintf(stderr, "[error] Release failed (code %d)\n", stat.status);
+            return -1;
     }
 
     return 0;
