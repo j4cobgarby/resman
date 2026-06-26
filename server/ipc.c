@@ -163,7 +163,7 @@ int handle_client(const int soc_client) { /*{{{*/
                 RESMAND_ERROR(
                     "Received dequeue request by user %d for job %d, "
                     "but refusing to dequeue currently running job\n",
-                    deq.uid, deq.job_uuid)
+                    client_uid, deq.job_uuid)
                 resp.status = STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING;
             } else {
                 queued_job *target_job = find_job(&q, deq.job_uuid);
@@ -171,20 +171,20 @@ int handle_client(const int soc_client) { /*{{{*/
                     RESMAND_ERROR(
                         "Received dequeue request by user %d for job "
                         "%d, but no such job in queue\n",
-                        deq.uid, deq.job_uuid);
+                        client_uid, deq.job_uuid);
                     resp.status = STATUS_DEQ_FAIL_NO_SUCH_JOB;
-                } else if (target_job->job.uid != deq.uid && !deq.force) {
+                } else if (target_job->job.uid != client_uid && !deq.force) {
                     RESMAND_ERROR(
                         "Received dequeue request by user %d for job "
                         "%d owned by %d (force: %d), refusing to "
                         "dequeue\n",
-                        deq.uid, deq.job_uuid, target_job->job.uid, deq.force);
+                        client_uid, deq.job_uuid, target_job->job.uid, deq.force);
                     resp.status = STATUS_DEQ_FAIL_NOT_YOUR_JOB;
                 } else {
                     RESMAND_INFO(
                         "Received dequeue request by user %d for job "
                         "%d owned by %d (force: %d), dequeueing job\n",
-                        deq.uid, deq.job_uuid, target_job->job.uid, deq.force);
+                        client_uid, deq.job_uuid, target_job->job.uid, deq.force);
                     // This searches the queue again (cf. find_job above), but
                     // it's fine since we hold mut_q throughout
                     queued_job *deq_job = remove_job(&q, deq.job_uuid);

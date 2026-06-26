@@ -400,7 +400,6 @@ int subcmd_dequeue(const int argc, char** argv) { /*{{{*/
     }
 
     req.req_type = IPCREQ_DEQUEUE;
-    req.deq.uid = getuid();
     req.deq.job_uuid = args.job_id;
     req.deq.force = args.force;
 
