@@ -74,16 +74,12 @@ int main(void) { /*{{{*/
 void* dispatcher(void* args UNUSED) { /*{{{*/
     pid_t pid;
     queued_job* next_job;
-    int is_running;
 
     while (true) {
         sleep(POLL_DELAY);
 
         pthread_mutex_lock(&mut_rj);
-        is_running = !!running_job;
-        pthread_mutex_unlock(&mut_rj);
-
-        if (is_running) {
+        if (running_job) {
             /* There is a currently running job. Time or Cmd.
              * This code checks if the current job is ready to end. */
 
@@ -94,30 +90,26 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                         RESMAND_INFO("Timeslot job %d finished\n",
                                      running_job->job.job_uuid);
 
-                        pthread_mutex_lock(&mut_rj);
                         free_queued_job(running_job);
                         running_job = NULL;
-                        pthread_mutex_unlock(&mut_rj);
 
                         goto try_start;
                     }
                     break;
                 }
                 case JOB_CMD: {
-                    pthread_mutex_lock(&mut_rj);
                     if (running_job->manually_released) {
                         free_queued_job(running_job);
                         running_job = NULL;
-                        pthread_mutex_unlock(&mut_rj);
 
                         goto try_start;
                     }
-                    pthread_mutex_unlock(&mut_rj);
 
                     pid = running_job->job.cmd.pid;
 
                     if (kill(pid, 0) == 0) {
                         /* Job is still alive, just wait. */
+                        pthread_mutex_unlock(&mut_rj);
                         continue;
                     } else if (errno == ESRCH) {
                         /* The job has ended */
@@ -126,10 +118,8 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
 
                         /* TODO: Here we could add the finished job to a
                          * persistent database */
-                        pthread_mutex_lock(&mut_rj);
                         free_queued_job(running_job);
                         running_job = NULL;
-                        pthread_mutex_unlock(&mut_rj);
 
                         goto try_start;  // Skip the timeout to try to start a
                                          // new job.
@@ -149,7 +139,6 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
             next_job = deq_job(&q);
             pthread_mutex_unlock(&mut_q);
 
-            pthread_mutex_lock(&mut_rj);
             running_job = next_job;
 
             if (running_job) {
@@ -180,9 +169,8 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                                       running_job->job.job_type);
                 }
             }
-
-            pthread_mutex_unlock(&mut_rj);
         }
+        pthread_mutex_unlock(&mut_rj);
     }
 } /*}}}*/
 
