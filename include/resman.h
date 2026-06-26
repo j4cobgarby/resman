@@ -58,7 +58,6 @@ typedef struct info_request {
 } info_request;
 
 typedef struct dequeue_request {
-    uid_t uid;
     uuid_t job_uuid;
     int force;
 } dequeue_request;

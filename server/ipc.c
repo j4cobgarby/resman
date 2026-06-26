@@ -207,16 +207,16 @@ int handle_client(const int soc_client) { /*{{{*/
                 RESMAND_INFO(
                     "Received manual release request by user %d, but "
                     "server is not reserved. Nothing to do.\n",
-                    rel.uid)
+                    client_uid)
                 resp.status = STATUS_REL_OK_SERVER_IDLE;
             } else {
-                if (running_job->job.uid == rel.uid) {
+                if (running_job->job.uid == client_uid) {
                     // Requesting user owns the job, ok
                     RESMAND_INFO(
                         "Received manual release request by user %d "
                         "for their currently running job %d, "
                         "releasing lock\n",
-                        rel.uid, running_job->job.job_uuid);
+                        client_uid, running_job->job.job_uuid);
                     running_job->manually_released = 1;
                     resp.status = STATUS_OK;
                 } else {
@@ -226,7 +226,7 @@ int handle_client(const int soc_client) { /*{{{*/
                             "Received manual release request by user "
                             "%d for current running job %d owned by "
                             "%d (force: %d), releasing lock\n",
-                            rel.uid, running_job->job.uid,
+                            client_uid, running_job->job.uid,
                             running_job->job.job_uuid, rel.force);
                         running_job->manually_released = 1;
                         resp.status = STATUS_OK;
@@ -236,7 +236,7 @@ int handle_client(const int soc_client) { /*{{{*/
                             "%d for current running job %d owned by "
                             "%d (force: %d), refusing to release "
                             "lock\n",
-                            rel.uid, running_job->job.job_uuid,
+                            client_uid, running_job->job.job_uuid,
                             running_job->job.uid, rel.force);
                         resp.status = STATUS_REL_FAIL_NOT_YOUR_JOB;
                     }

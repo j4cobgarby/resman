@@ -460,7 +460,6 @@ int subcmd_release(const int argc, char** argv) {  // {{{
     }
 
     req.req_type = IPCREQ_RELEASE;
-    req.rel.uid = getuid();
     req.rel.force = args.force;
 
     if ((soc = connect_to_server(socket_addr)) < 0) {
