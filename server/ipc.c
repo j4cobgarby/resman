@@ -49,27 +49,28 @@ static uuid_t next_uuid(void) { /*{{{*/
     return ++next;
 } /*}}}*/
 
-static int send_status(int soc, status_response *resp) {/*{{{*/
+static ssize_t send_status(const int soc, status_response *resp) { /*{{{*/
     if (!resp) return -1;
     return send(soc, resp, sizeof(status_response), 0);
-}/*}}}*/
+} /*}}}*/
 
 /* Handle a new client connection. This will wait for the client to send a
  * request, at which point -- based on the type of request -- it will perform
  * the necessary action.
  * Returns -1 on failure, or 0 on success. */
-int handle_client(int soc_client) { /*{{{*/
+int handle_client(const int soc_client) { /*{{{*/
     ipc_request req;
     status_response resp;
 
-    int bytes_read;
+    ssize_t bytes_read;
     if ((bytes_read = recv(soc_client, &req, sizeof(req), 0)) == -1) {
         perror("recv");
     }
 
     if (bytes_read != sizeof(req)) {
-        RESMAND_ERROR("Problem with client request: got %d bytes but expected %lu\n",
-               bytes_read, sizeof(req));
+        RESMAND_ERROR(
+            "Problem with client request: got %ld bytes but expected %lu\n",
+            bytes_read, sizeof(req));
         close(soc_client);
         return -1;
     }
@@ -88,9 +89,9 @@ int handle_client(int soc_client) { /*{{{*/
             switch (job.job_type) {
                 case JOB_CMD:
                     RESMAND_INFO(
-                        "Received command job %d by user %d (pid: %d, msg: '%s')\n",
-                        job.job_uuid, job.uid, job.cmd.pid, job.msg
-                    );
+                        "Received command job %d by user %d (pid: %d, msg: "
+                        "'%s')\n",
+                        job.job_uuid, job.uid, job.cmd.pid, job.msg);
                     pthread_mutex_lock(&mut_q);
                     enq_job(&q, job);
                     pthread_mutex_unlock(&mut_q);
@@ -98,15 +99,15 @@ int handle_client(int soc_client) { /*{{{*/
                     break;
                 case JOB_TIMESLOT:
                     RESMAND_INFO(
-                        "Received timeslot job %d by user %d (time: %ds, msg: '%s')\n",
-                        job.job_uuid, job.uid, job.timeslot.secs, job.msg
-                    );
+                        "Received timeslot job %d by user %d (time: %ds, msg: "
+                        "'%s')\n",
+                        job.job_uuid, job.uid, job.timeslot.secs, job.msg);
 
                     if (running_job || peek_job(q, 0)) {
                         RESMAND_INFO(
-                            "Rejecting timeslot job %d: server is already reserved\n",
-                            job.job_uuid
-                        );
+                            "Rejecting timeslot job %d: server is already "
+                            "reserved\n",
+                            job.job_uuid);
                         resp.status = STATUS_FAIL;
                         break;
                     }
@@ -131,29 +132,31 @@ int handle_client(int soc_client) { /*{{{*/
             pthread_mutex_lock(&mut_rj);
 
             if (running_job && running_job->job.job_uuid == deq.job_uuid) {
-                RESMAND_ERROR("Received dequeue request by user %d for job %d, "
-                              "but refusing to dequeue currently running job\n",
-                              deq.uid, deq.job_uuid)
+                RESMAND_ERROR(
+                    "Received dequeue request by user %d for job %d, "
+                    "but refusing to dequeue currently running job\n",
+                    deq.uid, deq.job_uuid)
                 resp.status = STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING;
             } else {
                 queued_job *target_job = find_job(&q, deq.job_uuid);
                 if (!target_job) {
-                    RESMAND_ERROR("Received dequeue request by user %d for job "
-                                  "%d, but no such job in queue\n",
-                                  deq.uid, deq.job_uuid);
+                    RESMAND_ERROR(
+                        "Received dequeue request by user %d for job "
+                        "%d, but no such job in queue\n",
+                        deq.uid, deq.job_uuid);
                     resp.status = STATUS_DEQ_FAIL_NO_SUCH_JOB;
                 } else if (target_job->job.uid != deq.uid && !deq.force) {
-                    RESMAND_ERROR("Received dequeue request by user %d for job "
-                                  "%d owned by %d (force: %d), refusing to "
-                                  "dequeue\n",
-                                  deq.uid, deq.job_uuid, target_job->job.uid,
-                                  deq.force);
+                    RESMAND_ERROR(
+                        "Received dequeue request by user %d for job "
+                        "%d owned by %d (force: %d), refusing to "
+                        "dequeue\n",
+                        deq.uid, deq.job_uuid, target_job->job.uid, deq.force);
                     resp.status = STATUS_DEQ_FAIL_NOT_YOUR_JOB;
                 } else {
-                    RESMAND_INFO("Received dequeue request by user %d for job "
-                                 "%d owned by %d (force: %d), dequeueing job\n",
-                                 deq.uid, deq.job_uuid, target_job->job.uid,
-                                 deq.force);
+                    RESMAND_INFO(
+                        "Received dequeue request by user %d for job "
+                        "%d owned by %d (force: %d), dequeueing job\n",
+                        deq.uid, deq.job_uuid, target_job->job.uid, deq.force);
                     // This searches the queue again (cf. find_job above), but
                     // it's fine since we hold mut_q throughout
                     queued_job *deq_job = remove_job(&q, deq.job_uuid);
@@ -173,36 +176,40 @@ int handle_client(int soc_client) { /*{{{*/
             pthread_mutex_lock(&mut_rj);
 
             if (!running_job) {
-                RESMAND_INFO("Received manual release request by user %d, but "
-                             "server is not reserved. Nothing to do.\n",
-                             rel.uid)
+                RESMAND_INFO(
+                    "Received manual release request by user %d, but "
+                    "server is not reserved. Nothing to do.\n",
+                    rel.uid)
                 resp.status = STATUS_REL_OK_SERVER_IDLE;
             } else {
                 if (running_job->job.uid == rel.uid) {
                     // Requesting user owns the job, ok
-                    RESMAND_INFO("Received manual release request by user %d "
-                                 "for their currently running job %d, "
-                                 "releasing lock\n",
-                                 rel.uid, running_job->job.job_uuid);
+                    RESMAND_INFO(
+                        "Received manual release request by user %d "
+                        "for their currently running job %d, "
+                        "releasing lock\n",
+                        rel.uid, running_job->job.job_uuid);
                     running_job->manually_released = 1;
                     resp.status = STATUS_OK;
                 } else {
                     // Requesting user does not own the job, require force
                     if (rel.force) {
-                        RESMAND_INFO("Received manual release request by user "
-                                     "%d for current running job %d owned by "
-                                     "%d (force: %d), releasing lock\n",
-                                     rel.uid, running_job->job.uid,
-                                     running_job->job.job_uuid, rel.force);
+                        RESMAND_INFO(
+                            "Received manual release request by user "
+                            "%d for current running job %d owned by "
+                            "%d (force: %d), releasing lock\n",
+                            rel.uid, running_job->job.uid,
+                            running_job->job.job_uuid, rel.force);
                         running_job->manually_released = 1;
                         resp.status = STATUS_OK;
                     } else {
-                        RESMAND_ERROR("Received manual release request by user "
-                                      "%d for current running job %d owned by "
-                                      "%d (force: %d), refusing to release "
-                                      "lock\n",
-                                      rel.uid, running_job->job.job_uuid,
-                                      running_job->job.uid, rel.force);
+                        RESMAND_ERROR(
+                            "Received manual release request by user "
+                            "%d for current running job %d owned by "
+                            "%d (force: %d), refusing to release "
+                            "lock\n",
+                            rel.uid, running_job->job.job_uuid,
+                            running_job->job.uid, rel.force);
                         resp.status = STATUS_REL_FAIL_NOT_YOUR_JOB;
                     }
                 }

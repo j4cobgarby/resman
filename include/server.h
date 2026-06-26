@@ -32,7 +32,7 @@ void *dispatcher(void *args);
 int make_soc_listen(const char *addr);
 int handle_client(int soc_client);
 void sigint_handler(int sig);
-const queued_job *peek_job(queued_job *q, int off);
+const queued_job *peek_job(const queued_job *q, int off);
 queued_job *deq_job(queued_job **q);
 int enq_job(queued_job **q, job_descriptor job);
 int queue_len(queued_job *q);

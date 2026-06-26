@@ -68,7 +68,7 @@ int main(void) { /*{{{*/
 } /*}}}*/
 
 /* The dispatcher is responsible for polling the currently running job (if one
- * exists) to check when it ends. When there is no job (the server is free,)
+ * exists) to check when it ends. When there is no job (the server is free),
  * then this function begins a new one.
  * It's meant to be run as a thread. */
 void* dispatcher(void* args UNUSED) { /*{{{*/
@@ -89,7 +89,8 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
 
             switch (running_job->job.job_type) {
                 case JOB_TIMESLOT: {
-                    if (running_job->manually_released || time(NULL) >= running_job->job.timeslot.t_end) {
+                    if (running_job->manually_released ||
+                        time(NULL) >= running_job->job.timeslot.t_end) {
                         RESMAND_INFO("Timeslot job %d finished\n",
                                      running_job->job.job_uuid);
 
@@ -155,11 +156,10 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
                         RESMAND_INFO(
-                            "Starting command job %d (pid: %d) for user %d: '%s'\n",
-                            running_job->job.job_uuid,
-                            running_job->job.cmd.pid,
-                            running_job->job.uid,
-                            running_job->job.msg);
+                            "Starting command job %d (pid: %d) for user %d: "
+                            "'%s'\n",
+                            running_job->job.job_uuid, running_job->job.cmd.pid,
+                            running_job->job.uid, running_job->job.msg);
                         /* Tell the waiting job stub to start the desired
                          * process */
                         running_job->job.t_started = time(NULL);
@@ -186,7 +186,7 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
     }
 } /*}}}*/
 
-int send_queue_info(int soc_client, unsigned int count) { /* {{{ */
+int send_queue_info(const int soc_client, const unsigned int count) { /* {{{ */
     pthread_mutex_lock(&mut_q);
     pthread_mutex_lock(&mut_rj);
 
