@@ -143,9 +143,7 @@ int subcmd_run(const int argc, char** argv) { /*{{{*/
             JOB_MSG_LEN);
     }
 
-    job.uid = getuid();
     job.t_submitted = time(NULL);
-    job.cmd.pid = getpid();
     job.job_type = JOB_CMD;
 
     if (args.msg) {
@@ -239,7 +237,6 @@ int subcmd_time(const int argc, char** argv) { /*{{{*/
         }
     }
 
-    job.uid = getuid();
     job.t_submitted = time(NULL);
     job.job_type = JOB_TIMESLOT;
     job.timeslot.secs = args.seconds;

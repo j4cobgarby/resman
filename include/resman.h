@@ -44,7 +44,7 @@ typedef struct job_descriptor {
     enum job_type job_type;
     union {
         struct {
-            pid_t pid;  // Job stub PID
+            int pidfd;  // PIDFD for the job process
         } cmd;
         struct {
             unsigned int secs;  // Seconds to reserve

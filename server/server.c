@@ -2,9 +2,10 @@
 #include "server.h"
 
 #include <assert.h>
-#include <errno.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/pidfd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -72,7 +73,6 @@ int main(void) { /*{{{*/
  * then this function begins a new one.
  * It's meant to be run as a thread. */
 void* dispatcher(void* args UNUSED) { /*{{{*/
-    pid_t pid;
     queued_job* next_job;
 
     while (true) {
@@ -82,45 +82,41 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
         if (running_job) {
             /* There is a currently running job. Time or Cmd.
              * This code checks if the current job is ready to end. */
-
             switch (running_job->job.job_type) {
                 case JOB_TIMESLOT: {
                     if (running_job->manually_released ||
                         time(NULL) >= running_job->job.timeslot.t_end) {
                         RESMAND_INFO("Timeslot job %d finished\n",
                                      running_job->job.job_uuid);
-
                         free_queued_job(running_job);
                         goto try_start;
                     }
                     break;
                 }
                 case JOB_CMD: {
-                    if (running_job->manually_released) {
+                    /* The pidfd becomes readable when the task that it refers
+                     * to has terminated (see open(2)), use poll() to check. */
+                    bool job_exited = false;
+                    struct pollfd pollfd = {
+                        .fd = running_job->job.cmd.pidfd,
+                        .events = POLLIN,
+                    };
+                    const int r = poll(&pollfd, 1, 0);
+                    if (r == -1) {
+                        perror("poll");
+                    } else if (pollfd.revents & POLLIN) {
+                        // The job has ended, pidfd became readable
+                        RESMAND_INFO("Command job %d finished\n",
+                                     running_job->job.job_uuid);
+                        job_exited = true;
+                    }
+
+                    if (job_exited || running_job->manually_released) {
+                        close(running_job->job.cmd.pidfd);
                         free_queued_job(running_job);
                         goto try_start;
                     }
 
-                    pid = running_job->job.cmd.pid;
-
-                    if (kill(pid, 0) == 0) {
-                        /* Job is still alive, just wait. */
-                        pthread_mutex_unlock(&mut_rj);
-                        continue;
-                    } else if (errno == ESRCH) {
-                        /* The job has ended */
-                        RESMAND_INFO("Command job %d finished\n",
-                                     running_job->job.job_uuid);
-
-                        /* TODO: Here we could add the finished job to a
-                         * persistent database */
-                        free_queued_job(running_job);
-                        goto try_start;  // Skip the timeout to try to start a
-                                         // new job.
-                    } else {
-                        perror("kill");
-                        exit(EXIT_FAILURE);
-                    }
                     break;
                 }
             }
@@ -138,15 +134,39 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
             if (running_job) {
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
+                        const pid_t target_pid =
+                            pidfd_getpid(running_job->job.cmd.pidfd);
+                        if (target_pid == -1) {
+                            RESMAND_ERROR(
+                                "Failed to get PID for next command job %d in "
+                                "queue, maybe the process exited?",
+                                running_job->job.job_uuid)
+                            // Try next job in queue without delay
+                            close(running_job->job.cmd.pidfd);
+                            free_queued_job(running_job);
+                            goto try_start;
+                        }
+
                         RESMAND_INFO(
                             "Starting command job %d (pid: %d) for user %d: "
                             "'%s'\n",
-                            running_job->job.job_uuid, running_job->job.cmd.pid,
+                            running_job->job.job_uuid, target_pid,
                             running_job->job.uid, running_job->job.msg);
-                        /* Tell the waiting job stub to start the desired
-                         * process */
                         running_job->job.t_started = time(NULL);
-                        kill(running_job->job.cmd.pid, SIGUSR1);
+
+                        // Signal the waiting job stub to start executing
+                        if (pidfd_send_signal(running_job->job.cmd.pidfd,
+                                              SIGUSR1, NULL, 0) == -1) {
+                            perror("pidfd_send_signal");
+                            RESMAND_ERROR(
+                                "Failed to signal next command job %d in "
+                                "queue, trying the next one",
+                                running_job->job.job_uuid);
+                            // Try next job in queue instead
+                            close(running_job->job.cmd.pidfd);
+                            free_queued_job(running_job);
+                            goto try_start;
+                        }
                         break;
                     case JOB_TIMESLOT:
                         RESMAND_INFO(

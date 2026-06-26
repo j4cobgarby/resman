@@ -1,4 +1,5 @@
 // vim: fdm=marker
+#include <sys/pidfd.h>
 #include <sys/socket.h>
 #include <sys/stat.h> /* chmod */
 #include <sys/un.h>
@@ -75,6 +76,31 @@ int handle_client(const int soc_client) { /*{{{*/
         return -1;
     }
 
+    // Use SO_PEERPIDFD to obtain a pidfd to retrieve information about the
+    // connecting client process.
+    int pidfd = -1;
+    socklen_t len = sizeof(pidfd);
+    if (getsockopt(soc_client, SOL_SOCKET, SO_PEERPIDFD, &pidfd, &len) == -1) {
+        perror("getsockopt(SO_PEERPIDFD)");
+        close(soc_client);
+        return -1;
+    }
+    if (pidfd < 0) {
+        RESMAND_ERROR("Failed to get pidfd of connected client")
+        close(soc_client);
+        return -1;
+    }
+    struct pidfd_info client_info;
+    if (ioctl(pidfd, PIDFD_GET_INFO, &client_info) == -1) {
+        perror("ioctl(PIDFD_GET_INFO)");
+        close(pidfd);
+        close(soc_client);
+        return -1;
+    }
+
+    const pid_t client_pid = (pid_t)client_info.pid;
+    const uid_t client_uid = client_info.ruid;  // Use the Real UID
+
     switch (req.req_type) {
         case IPCREQ_JOB:
             job_descriptor job = req.job;
@@ -85,13 +111,15 @@ int handle_client(const int soc_client) { /*{{{*/
             }
 
             job.job_uuid = next_uuid();
+            job.uid = client_uid;
 
             switch (job.job_type) {
                 case JOB_CMD:
                     RESMAND_INFO(
                         "Received command job %d by user %d (pid: %d, msg: "
                         "'%s')\n",
-                        job.job_uuid, job.uid, job.cmd.pid, job.msg);
+                        job.job_uuid, job.uid, client_pid, job.msg);
+                    job.cmd.pidfd = pidfd;
                     pthread_mutex_lock(&mut_q);
                     enq_job(&q, job);
                     pthread_mutex_unlock(&mut_q);
