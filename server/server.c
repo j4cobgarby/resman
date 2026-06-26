@@ -112,7 +112,6 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                     }
 
                     if (job_exited || running_job->manually_released) {
-                        close(running_job->job.cmd.pidfd);
                         free_queued_job(running_job);
                         goto try_start;
                     }
@@ -142,7 +141,6 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                                 "queue, maybe the process exited?",
                                 running_job->job.job_uuid)
                             // Try next job in queue without delay
-                            close(running_job->job.cmd.pidfd);
                             free_queued_job(running_job);
                             goto try_start;
                         }
@@ -163,7 +161,6 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                                 "queue, trying the next one",
                                 running_job->job.job_uuid);
                             // Try next job in queue instead
-                            close(running_job->job.cmd.pidfd);
                             free_queued_job(running_job);
                             goto try_start;
                         }
@@ -242,4 +239,9 @@ void sigint_handler(int sig UNUSED) { /*{{{*/
     exit(EXIT_SUCCESS);
 } /*}}}*/
 
-void free_queued_job(queued_job* qjob) { free(qjob); }
+void free_queued_job(queued_job* qjob) {
+    if (qjob->job.job_type == JOB_CMD) {
+        close(qjob->job.cmd.pidfd);
+    }
+    free(qjob);
+}
