@@ -5,8 +5,8 @@
 
 /* Take a pointer to the job at the front of the queue, without removing it.
  * An offset can be specified, if a job further in the queue is needed.
- * Returns NULL if the queue is the requested queue position is empty. */
-const queued_job *peek_job(queued_job *q, int off) { /*{{{*/
+ * Returns NULL if the requested queue position is empty. */
+const queued_job *peek_job(const queued_job *q, const int off) { /*{{{*/
     for (int i = 0; i < off && q; i++, q = q->next)
         ;
 
@@ -34,7 +34,7 @@ queued_job *find_job(queued_job **q, const uuid_t uuid) {
 }
 
 /* Remove a job from the middle of the queue with a given UUID. */
-queued_job *remove_job(queued_job **q, uuid_t uuid) {/*{{{*/
+queued_job *remove_job(queued_job **q, const uuid_t uuid) {/*{{{*/
     queued_job *ret = *q;
     queued_job *prev = NULL;
 
@@ -48,12 +48,12 @@ queued_job *remove_job(queued_job **q, uuid_t uuid) {/*{{{*/
     }
 
     return NULL; /* Not found */
-}/*}}}*/
+} /*}}}*/
 
 /* Pushes a new job to the back of the queue.
  * Returns the new length of the queue. */
-int enq_job(queued_job **q, job_descriptor job) { /*{{{*/
-    queued_job *qjob = (queued_job *)malloc(sizeof(queued_job));
+int enq_job(queued_job **q, const job_descriptor job) { /*{{{*/
+    queued_job *qjob = malloc(sizeof(queued_job));
 
     if (!qjob) {
         perror("malloc");
@@ -64,10 +64,10 @@ int enq_job(queued_job **q, job_descriptor job) { /*{{{*/
     qjob->t_ended = 0;
     qjob->t_started = 0;
     qjob->manually_released = 0;
+    qjob->next = NULL;
 
     if (!*q) {
         *q = qjob;
-        qjob->next = NULL;
         return 1;
     }
 
@@ -76,7 +76,6 @@ int enq_job(queued_job **q, job_descriptor job) { /*{{{*/
         ;
 
     (*q)->next = qjob;
-    qjob->next = NULL;
     return i;
 } /*}}}*/
 
@@ -89,4 +88,4 @@ int queue_len(queued_job *q) {/* {{{ */
             ;
     }
     return qlen;
-}/* }}} */
+} /* }}} */
