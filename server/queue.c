@@ -61,8 +61,6 @@ int enq_job(queued_job **q, const job_descriptor job) { /*{{{*/
     }
 
     qjob->job = job;
-    qjob->t_ended = 0;
-    qjob->t_started = 0;
     qjob->manually_released = 0;
     qjob->next = NULL;
 

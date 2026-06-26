@@ -16,8 +16,6 @@
 typedef struct queued_job {
     job_descriptor job;
     struct queued_job *next;
-    time_t t_started;
-    time_t t_ended;
     int manually_released;
 } queued_job;
 
