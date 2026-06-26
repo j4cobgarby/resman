@@ -10,7 +10,7 @@
 #include "client.h"
 #include "resman.h"
 
-const char *jobtype_lbl[] = {
+const char* jobtype_lbl[] = {
     "Command",
     "Time",
 };
@@ -32,16 +32,21 @@ static struct argp_option options_time[] = {
 };
 
 static struct argp argp_time = {
-    options_time, &parser_time,
-    "DURATION",   "Reserves the server for the given amount of time, specified using suffixes 's', 'm', or 'h' to specify seconds, minutes, or hours. These can be combined (e.g. 3h10m5s).",
-    NULL,         NULL,
+    options_time,
+    &parser_time,
+    "DURATION",
+    "Reserves the server for the given amount of time, specified using "
+    "suffixes 's', 'm', or 'h' to specify seconds, minutes, or hours. These "
+    "can be combined (e.g. 3h10m5s).",
+    NULL,
+    NULL,
     NULL};
 
 static struct argp_option options_check[] = {
-    {"silent",  's', 0, 0, "Don't print anything, just return status value.", 0},
-    {"count",   'n', "COUNT", 0, "How many queued jobs to view.", 0},
-    {"verbose", 'V', 0, 0, "Give verbose output.",          0},
-    {0,         0,   0, 0, 0,                               0},
+    {"silent",  's', 0,       0, "Don't print anything, just return status value.", 0},
+    {"count",   'n', "COUNT", 0, "How many queued jobs to view.",                   0},
+    {"verbose", 'V', 0,       0, "Give verbose output.",                            0},
+    {0,         0,   0,       0, 0,                                                 0},
 };
 
 static struct argp argp_check = {
@@ -50,36 +55,46 @@ static struct argp argp_check = {
 };
 
 static struct argp_option options_dequeue[] = {
-    {"force", 'f', 0, 0, "Even if target job belongs to different user.", 0},
-    {"verbose", 'V', 0, 0, "Give verbose output.", 0},
-    {0,         0,   0, 0, 0,                      0},
+    {"force",   'f', 0, 0, "Even if target job belongs to different user.", 0},
+    {"verbose", 'V', 0, 0, "Give verbose output.",                          0},
+    {0,         0,   0, 0, 0,                                               0},
 };
 
 static struct argp argp_dequeue = {
-    options_dequeue,    &parser_dequeue,    "JOB_ID",   "Dequeue a job.",
-    NULL,               NULL,               NULL,
+    options_dequeue,
+    &parser_dequeue,
+    "JOB_ID",
+    "Dequeue a job.",
+    NULL,
+    NULL,
+    NULL,
 };
 
 static struct argp_option options_release[] = {
-    {"force", 'f', 0, 0, "Even if current job belongs to different user.", 0},
-    {"verbose", 'V', 0, 0, "Give verbose output.", 0},
-    {0, 0, 0, 0, 0, 0},
+    {"force",   'f', 0, 0, "Even if current job belongs to different user.", 0},
+    {"verbose", 'V', 0, 0, "Give verbose output.",                           0},
+    {0,         0,   0, 0, 0,                                                0},
 };
 
 static struct argp argp_release = {
-    options_release,    &parser_release,    NULL,   "Release current job's lock. Does not terminate job.",
-    NULL,               NULL,               NULL,
+    options_release,
+    &parser_release,
+    NULL,
+    "Release current job's lock. Does not terminate job.",
+    NULL,
+    NULL,
+    NULL,
 };
 
-static int send_ipc_request(int soc, const ipc_request* req) { /*{{{*/
+static ssize_t send_ipc_request(const int soc, const ipc_request* req) { /*{{{*/
     if (!req) {
-        fprintf(stderr, "[bug]");
+        fprintf(stderr, "[bug] send_ipc_request received nullptr");
         return -1;
     }
     return send(soc, req, sizeof(ipc_request), 0);
 } /*}}}*/
 
-static int get_status(int soc, status_response* stat) { /*{{{*/
+static int get_status(const int soc, status_response* stat) { /*{{{*/
     if (!stat) return -1;
     if (recv(soc, stat, sizeof(status_response), 0) < 0) {
         return -1;
@@ -87,7 +102,7 @@ static int get_status(int soc, status_response* stat) { /*{{{*/
     return 0;
 } /*}}}*/
 
-int subcmd_run(int argc, char** argv) { /*{{{*/
+int subcmd_run(const int argc, char** argv) { /*{{{*/
     struct args_run args = {NULL, NULL, 0, 0};
 
     int soc;
@@ -199,7 +214,7 @@ int subcmd_run(int argc, char** argv) { /*{{{*/
     return -1;
 } /*}}}*/
 
-int subcmd_time(int argc, char** argv) { /*{{{*/
+int subcmd_time(const int argc, char** argv) { /*{{{*/
     struct args_time args = {NULL, -1, 0};
     job_descriptor job = {0};
     ipc_request req;
@@ -271,7 +286,7 @@ int subcmd_check(int argc UNUSED, char** argv UNUSED) { /*{{{*/
     unsigned int resp_maxlen;
     int soc;
 
-    int ret = argp_parse(&argp_check, argc - 1, argv + 1, 0, 0, (void*)&args);
+    const int ret = argp_parse(&argp_check, argc - 1, argv + 1, 0, 0, &args);
     if (ret != 0) {
         exit(-1);
     }
@@ -305,6 +320,7 @@ int subcmd_check(int argc UNUSED, char** argv UNUSED) { /*{{{*/
 
     if (recv(soc, resp_buf, resp_maxlen, 0) < 0) {
         perror("recv");
+        free(resp_buf);
         return -1;
     }
 
@@ -342,7 +358,7 @@ int subcmd_check(int argc UNUSED, char** argv UNUSED) { /*{{{*/
             char time_buf[32];
 
             for (int i = 0; i < (int)resp_header->resp_count; i++) {
-                struct passwd* pwd = getpwuid(jobs[i].uid);
+                const struct passwd* pwd = getpwuid(jobs[i].uid);
                 strftime(time_buf, sizeof(time_buf), "%a %e %b %T",
                          localtime(&jobs[i].t_submitted));
 
@@ -359,26 +375,29 @@ int subcmd_check(int argc UNUSED, char** argv UNUSED) { /*{{{*/
         }
     }
 
-    return resp_header->currently_running;
+    const int running = resp_header->currently_running;
+    free(resp_buf);
+    return running;
 } /*}}}*/
 
-int subcmd_dequeue(int argc, char** argv) { /*{{{*/
+int subcmd_dequeue(const int argc, char** argv) { /*{{{*/
     struct args_dequeue args = {.job_id = -1, .force = 0, .verbose = 0};
     ipc_request req;
     status_response stat;
     int soc;
 
-    int ret = argp_parse(&argp_dequeue, argc - 1, argv + 1, 0, 0, (void*)&args);
+    const int ret =
+        argp_parse(&argp_dequeue, argc - 1, argv + 1, 0, 0, (void*)&args);
     if (ret != 0) {
         if (ret == EINVAL) {
-            fprintf(stderr, "Invalid job ID.\n");
+            fprintf(stderr, "Invalid job ID\n");
             exit(EINVAL);
         }
         exit(-1);
     }
 
     if (args.job_id > UUID_MAX || args.job_id < 0) {
-        fprintf(stderr, "Invalid job ID.\n");
+        fprintf(stderr, "Invalid job ID\n");
         return -1;
     }
 
@@ -407,13 +426,21 @@ int subcmd_dequeue(int argc, char** argv) { /*{{{*/
             printf("Successfully dequeued job %d\n", args.job_id);
             break;
         case STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING:
-            fprintf(stderr, "[error] Cannot dequeue currently running job. Consider releasing the lock instead.\n");
+            fprintf(stderr,
+                    "[error] Cannot dequeue currently running job. Consider "
+                    "releasing the lock instead.\n");
             break;
         case STATUS_DEQ_FAIL_NO_SUCH_JOB:
-            fprintf(stderr, "[error] Failed to dequeue job %d: job not found in queue\n", args.job_id);
+            fprintf(
+                stderr,
+                "[error] Failed to dequeue job %d: job not found in queue\n",
+                args.job_id);
             break;
         case STATUS_DEQ_FAIL_NOT_YOUR_JOB:
-            fprintf(stderr, "[error] Failed to dequeue job %d submitted by another user\n", args.job_id);
+            fprintf(
+                stderr,
+                "[error] Failed to dequeue job %d submitted by another user\n",
+                args.job_id);
             break;
         default:
             fprintf(stderr, "[error] Dequeue failed (code: %d)\n", stat.status);
@@ -423,13 +450,14 @@ int subcmd_dequeue(int argc, char** argv) { /*{{{*/
     return 0;
 } /*}}}*/
 
-int subcmd_release(int argc, char** argv) {// {{{
+int subcmd_release(const int argc, char** argv) {  // {{{
     struct args_release args = {.force = 0, .verbose = 0};
     ipc_request req;
     status_response stat;
     int soc;
 
-    int ret = argp_parse(&argp_release, argc - 1, argv + 1, 0, 0, (void*)&args);
+    const int ret =
+        argp_parse(&argp_release, argc - 1, argv + 1, 0, 0, (void*)&args);
     if (ret != 0) {
         exit(-1);
     }
@@ -461,7 +489,9 @@ int subcmd_release(int argc, char** argv) {// {{{
             printf("Server is not currently locked, no lock to release.\n");
             break;
         case STATUS_REL_FAIL_NOT_YOUR_JOB:
-            fprintf(stderr, "[error] Refusing to release lock held by another user, consider using --force.\n");
+            fprintf(stderr,
+                    "[error] Refusing to release lock held by another user, "
+                    "consider using --force.\n");
             break;
         default:
             fprintf(stderr, "[error] Release failed (code %d)\n", stat.status);
@@ -469,4 +499,4 @@ int subcmd_release(int argc, char** argv) {// {{{
     }
 
     return 0;
-}// }}}
+}  // }}}
