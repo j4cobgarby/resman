@@ -39,6 +39,5 @@ int queue_len(queued_job *q);
 queued_job *find_job(queued_job **q, uuid_t uuid);
 queued_job *remove_job(queued_job **q, uuid_t uuid);
 int send_queue_info(int soc_client, unsigned int count);
-void disp_status(void);
 
 #endif  /* SERVER_H */

@@ -35,7 +35,6 @@ int main(void) { /*{{{*/
         "Version 0.0\n");
     fflush(stdout);
 
-    disp_status();
     int soc_listen, soc_client;
     struct sockaddr_un sa_client = {0};
     unsigned int soc_len = sizeof(sa_client);
@@ -67,8 +66,6 @@ int main(void) { /*{{{*/
         }
     }
 } /*}}}*/
-
-void disp_status(void) { /* {{{ */ return; } /* }}} */
 
 /* The dispatcher is responsible for polling the currently running job (if one
  * exists) to check when it ends. When there is no job (the server is free,)
@@ -125,7 +122,6 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                         /* The job has ended */
                         RESMAND_INFO("Command job %d finished\n",
                                      running_job->job.job_uuid);
-                        disp_status();
 
                         /* TODO: Here we could add the finished job to a
                          * persistent database */
