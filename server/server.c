@@ -91,8 +91,6 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                                      running_job->job.job_uuid);
 
                         free_queued_job(running_job);
-                        running_job = NULL;
-
                         goto try_start;
                     }
                     break;
@@ -100,8 +98,6 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                 case JOB_CMD: {
                     if (running_job->manually_released) {
                         free_queued_job(running_job);
-                        running_job = NULL;
-
                         goto try_start;
                     }
 
@@ -119,8 +115,6 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                         /* TODO: Here we could add the finished job to a
                          * persistent database */
                         free_queued_job(running_job);
-                        running_job = NULL;
-
                         goto try_start;  // Skip the timeout to try to start a
                                          // new job.
                     } else {
