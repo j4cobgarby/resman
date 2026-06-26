@@ -41,7 +41,7 @@ int connect_to_server(const char *addr) { /*{{{*/
     struct sockaddr_un sa_server;
     unsigned int sa_len;
 
-    if ((soc = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+    if ((soc = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) < 0) {
         return -1;
     }
 
