@@ -68,6 +68,51 @@ int main(void) { /*{{{*/
     }
 } /*}}}*/
 
+void format_duration(const time_t earlier, char* buf, const size_t buflen) {
+    if (buf == NULL || buflen == 0) {
+        return;
+    }
+
+    const time_t now = time(NULL);
+    long long elapsed = now - earlier;
+    if (elapsed <= 0) {
+        snprintf(buf, buflen, "0s");
+        return;
+    }
+
+    const struct {
+        const char* suffix;
+        long long num_seconds;
+    } units[] = {
+        {"d",   86400LL},
+        {"h",   3600LL },
+        {"min", 60LL   },
+        {"s",   1LL    }
+    };
+    constexpr size_t num_units = sizeof(units) / sizeof(units[0]);
+
+    char* p = buf;
+    size_t left = buflen;
+    bool first = true;
+
+    for (size_t i = 0; i < num_units; ++i) {
+        const long long value = elapsed / units[i].num_seconds;
+        if (value == 0 && first) continue;  // Skip too large leading units
+
+        const int n = snprintf(p, left, "%s%lld%s", first ? "" : " ", value,
+                               units[i].suffix);
+        if (n < 0 || (size_t)n >= left) {
+            // Error or truncation; don't bother writing more
+            return;
+        }
+
+        p += n;
+        left -= (size_t)n;
+        elapsed %= units[i].num_seconds;
+        first = false;
+    }
+}
+
 /* The dispatcher is responsible for polling the currently running job (if one
  * exists) to check when it ends. When there is no job (the server is free),
  * then this function begins a new one.
@@ -106,12 +151,15 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                         perror("poll");
                     } else if (pollfd.revents & POLLIN) {
                         // The job has ended, pidfd became readable
-                        RESMAND_INFO("Command job %d finished\n",
-                                     running_job->job.job_uuid);
                         job_exited = true;
                     }
 
                     if (job_exited || running_job->manually_released) {
+                        char s_time[100];
+                        format_duration(running_job->job.t_started, s_time,
+                                        sizeof(s_time));
+                        RESMAND_INFO("Command job %d finished (duration: %s)\n",
+                                     running_job->job.job_uuid, s_time);
                         free_queued_job(running_job);
                         goto try_start;
                     }
