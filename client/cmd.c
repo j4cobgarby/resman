@@ -37,7 +37,8 @@ static struct argp argp_time = {
     "DURATION",
     "Reserves the server for the given amount of time, specified using "
     "suffixes 's', 'm', or 'h' to specify seconds, minutes, or hours. These "
-    "can be combined (e.g. 3h10m5s).",
+    "can be combined (e.g. 3h10m5s). A number without suffix is treated as "
+    "seconds (e.g. a duration of 120 will reserve the server for two minutes).",
     NULL,
     NULL,
     NULL};

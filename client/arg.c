@@ -28,6 +28,10 @@ static unsigned int parse_duration(const char *s) { /*{{{*/
             return -1;
         } else if (endptr == s_end) {
             /* Got to the end, so just return what we have */
+            if (stage == 0) {
+                // If no suffix is present at all, treat input as seconds
+                secs += acc;
+            }
             return secs;
         } else if (endptr == s) {
             /* Couldn't parse any further, due to invalid string */
