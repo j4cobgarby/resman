@@ -161,21 +161,6 @@ int subcmd_run(const int argc, char** argv) { /*{{{*/
         return -1;
     }
 
-    if (send_ipc_request(soc, &req) < 0) {
-        perror("[error] Failed send()'ing request.\n");
-        return -1;
-    }
-
-    if (get_status(soc, &resp) < 0) {
-        perror("get_status");
-        return -1;
-    }
-
-    if (resp.status != STATUS_OK) {
-        fprintf(stderr, "Failed to enqueue job.\n");
-        return -1;
-    }
-
     if (sigemptyset(&sigset) < 0) {
         perror("sigemptyset");
         return -1;
@@ -188,6 +173,21 @@ int subcmd_run(const int argc, char** argv) { /*{{{*/
 
     if (sigprocmask(SIG_BLOCK, &sigset, NULL) < 0) {
         perror("sigprocmask");
+        return -1;
+    }
+
+    if (send_ipc_request(soc, &req) < 0) {
+        perror("[error] Failed send()'ing request.\n");
+        return -1;
+    }
+
+    if (get_status(soc, &resp) < 0) {
+        perror("get_status");
+        return -1;
+    }
+
+    if (resp.status != STATUS_OK) {
+        fprintf(stderr, "Failed to enqueue job.\n");
         return -1;
     }
 
