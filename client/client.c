@@ -1,7 +1,6 @@
 // vim: fdm=marker
 #include "client.h"
 
-#include <argp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

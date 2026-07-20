@@ -3,9 +3,7 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <pwd.h>
 #include <signal.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -35,8 +33,8 @@ int main(void) { /*{{{*/
         " |  _ <  __/\\__ \\ | | | | | (_| | | | |\n"
         " |_| \\_\\___||___/_| |_| |_|\\__,_|_| |_|\n"
         "Version 0.0\n");
+    fflush(stdout);
 
-    disp_status();
     int soc_listen, soc_client;
     struct sockaddr_un sa_client = {0};
     unsigned int soc_len = sizeof(sa_client);
@@ -52,7 +50,7 @@ int main(void) { /*{{{*/
     }
 
     if (pthread_create(&thr_dispatcher, NULL, &dispatcher, NULL) != 0) {
-        fprintf(stderr, "pthread_create failed!.\n");
+        fprintf(stderr, "pthread_create failed\n");
         return EXIT_FAILURE;
     }
 
@@ -64,76 +62,59 @@ int main(void) { /*{{{*/
         }
 
         if (handle_client(soc_client) < 0) {
-            RESMAND_ERROR("Failed while handling a new client.\n");
+            RESMAND_ERROR("Failed while handling a new client\n");
         }
     }
 } /*}}}*/
 
-void disp_status(void) { /* {{{ */ return; } /* }}} */
-
 /* The dispatcher is responsible for polling the currently running job (if one
- * exists) to check when it ends. When there is no job (the server is free,)
+ * exists) to check when it ends. When there is no job (the server is free),
  * then this function begins a new one.
  * It's meant to be run as a thread. */
 void* dispatcher(void* args UNUSED) { /*{{{*/
     pid_t pid;
     queued_job* next_job;
-    int is_running;
 
     while (true) {
         sleep(POLL_DELAY);
 
         pthread_mutex_lock(&mut_rj);
-        is_running = !!running_job;
-        pthread_mutex_unlock(&mut_rj);
-
-        if (is_running) {
+        if (running_job) {
             /* There is a currently running job. Time or Cmd.
              * This code checks if the current job is ready to end. */
 
             switch (running_job->job.job_type) {
                 case JOB_TIMESLOT: {
-                    if (running_job->manually_released || time(NULL) >= running_job->job.timeslot.t_end) {
-                        RESMAND_INFO("Job finished timeslot.\n");
+                    if (running_job->manually_released ||
+                        time(NULL) >= running_job->job.timeslot.t_end) {
+                        RESMAND_INFO("Timeslot job %d finished\n",
+                                     running_job->job.job_uuid);
 
-                        pthread_mutex_lock(&mut_rj);
                         free_queued_job(running_job);
-                        running_job = NULL;
-                        pthread_mutex_unlock(&mut_rj);
-
                         goto try_start;
                     }
                     break;
                 }
                 case JOB_CMD: {
-                    pthread_mutex_lock(&mut_rj);
                     if (running_job->manually_released) {
                         free_queued_job(running_job);
-                        running_job = NULL;
-                        pthread_mutex_unlock(&mut_rj);
-
                         goto try_start;
                     }
-                    pthread_mutex_unlock(&mut_rj);
 
                     pid = running_job->job.cmd.pid;
 
                     if (kill(pid, 0) == 0) {
                         /* Job is still alive, just wait. */
+                        pthread_mutex_unlock(&mut_rj);
                         continue;
                     } else if (errno == ESRCH) {
                         /* The job has ended */
-                        RESMAND_INFO("Job finished, uuid=%d\n",
+                        RESMAND_INFO("Command job %d finished\n",
                                      running_job->job.job_uuid);
-                        disp_status();
 
                         /* TODO: Here we could add the finished job to a
                          * persistent database */
-                        pthread_mutex_lock(&mut_rj);
                         free_queued_job(running_job);
-                        running_job = NULL;
-                        pthread_mutex_unlock(&mut_rj);
-
                         goto try_start;  // Skip the timeout to try to start a
                                          // new job.
                     } else {
@@ -152,17 +133,16 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
             next_job = deq_job(&q);
             pthread_mutex_unlock(&mut_q);
 
-            pthread_mutex_lock(&mut_rj);
             running_job = next_job;
 
             if (running_job) {
                 switch (running_job->job.job_type) {
                     case JOB_CMD:
                         RESMAND_INFO(
-                            "Sending start signal to job(pid=%d, "
-                            "job_uuid=%d).\n",
-                            running_job->job.cmd.pid,
-                            running_job->job.job_uuid);
+                            "Starting command job %d (pid: %d) for user %d: "
+                            "'%s'\n",
+                            running_job->job.job_uuid, running_job->job.cmd.pid,
+                            running_job->job.uid, running_job->job.msg);
                         /* Tell the waiting job stub to start the desired
                          * process */
                         running_job->job.t_started = time(NULL);
@@ -170,8 +150,8 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                         break;
                     case JOB_TIMESLOT:
                         RESMAND_INFO(
-                            "Serving time slot request. Sleeping for %d "
-                            "secs.\n",
+                            "Starting timeslot job %d. Sleeping for %ds\n",
+                            running_job->job.job_uuid,
                             running_job->job.timeslot.secs);
                         running_job->job.t_started = time(NULL);
                         running_job->job.timeslot.t_end =
@@ -179,17 +159,16 @@ void* dispatcher(void* args UNUSED) { /*{{{*/
                             running_job->job.timeslot.secs;
                         break;
                     default:
-                        RESMAND_ERROR("Got malformed job type: %d.\n",
+                        RESMAND_ERROR("Received invalid job type: %d\n",
                                       running_job->job.job_type);
                 }
             }
-
-            pthread_mutex_unlock(&mut_rj);
         }
+        pthread_mutex_unlock(&mut_rj);
     }
 } /*}}}*/
 
-int send_queue_info(int soc_client, unsigned int count) { /* {{{ */
+int send_queue_info(const int soc_client, const unsigned int count) { /* {{{ */
     pthread_mutex_lock(&mut_q);
     pthread_mutex_lock(&mut_rj);
 
@@ -225,7 +204,7 @@ int send_queue_info(int soc_client, unsigned int count) { /* {{{ */
     pthread_mutex_unlock(&mut_rj);
 
     if (send(soc_client, ser_buf, buf_len, 0) < 0) {
-        RESMAND_ERROR("Failed sending queue response to client.\n");
+        RESMAND_ERROR("Failed sending queue response to client\n");
         free(ser_buf);
         return -1;
     }
@@ -239,7 +218,7 @@ fail:
 } /* }}} */
 
 void sigint_handler(int sig UNUSED) { /*{{{*/
-    printf("Caught SIGINT: exiting.\n");
+    printf("Caught SIGINT, exiting\n");
     exit(EXIT_SUCCESS);
 } /*}}}*/
 

@@ -7,19 +7,20 @@
 
 void print_subcmds(char *prog) { /*{{{*/
     fprintf(stderr, "Usage: %s SUBCOMMAND [OPTION...]\n", prog);
-    fprintf(stderr, "Valid subcommands: [r]un, [t]ime, [c]heck, [d]equeue, [R]elease\n");
+    fprintf(
+        stderr,
+        "Valid subcommands: [r]un, [t]ime, [c]heck, [d]equeue, [R]elease\n");
 } /*}}}*/
 
 static unsigned int parse_duration(const char *s) { /*{{{*/
     unsigned int secs = 0;
-    unsigned long acc;
     char *endptr;
     const char *s_end = s + strlen(s);
 
     /* Up to three stages, one for each unit (h,m,s) */
     for (int stage = 0; stage < 3; stage++) {
         errno = 0;
-        acc = strtoul(s, &endptr, 10);
+        const unsigned long acc = strtoul(s, &endptr, 10);
 
         if (errno != 0) {
             /* Failed to parse */
@@ -27,6 +28,10 @@ static unsigned int parse_duration(const char *s) { /*{{{*/
             return -1;
         } else if (endptr == s_end) {
             /* Got to the end, so just return what we have */
+            if (stage == 0) {
+                // If no suffix is present at all, treat input as seconds
+                secs += acc;
+            }
             return secs;
         } else if (endptr == s) {
             /* Couldn't parse any further, due to invalid string */
@@ -56,7 +61,7 @@ static unsigned int parse_duration(const char *s) { /*{{{*/
     return secs;
 } /*}}}*/
 
-error_t parser_run(int key, char *arg, struct argp_state *state) { /*{{{*/
+error_t parser_run(const int key, char *arg, struct argp_state *state) { /*{{{*/
     struct args_run *args = (struct args_run *)state->input;
 
     switch (key) {
@@ -88,7 +93,8 @@ error_t parser_run(int key, char *arg, struct argp_state *state) { /*{{{*/
     return 0;
 } /*}}}*/
 
-error_t parser_time(int key, char *arg, struct argp_state *state) { /*{{{*/
+error_t parser_time(const int key, char *arg,
+                    struct argp_state *state) { /*{{{*/
     struct args_time *args = (struct args_time *)state->input;
 
     switch (key) {
@@ -101,8 +107,8 @@ error_t parser_time(int key, char *arg, struct argp_state *state) { /*{{{*/
             break;
         case ARGP_KEY_ARG:
             if (state->arg_num == 0) {
-                int dur = parse_duration(arg);
-                if (dur == -1) {
+                const unsigned int dur = parse_duration(arg);
+                if (dur == UINT_MAX) {
                     argp_error(state, "Invalid duration format: '%s'n", arg);
                 }
                 args->seconds = dur;
@@ -123,7 +129,8 @@ error_t parser_time(int key, char *arg, struct argp_state *state) { /*{{{*/
     return 0;
 } /*}}}*/
 
-error_t parser_check(int key, char *arg, struct argp_state *state) { /*{{{*/
+error_t parser_check(const int key, char *arg,
+                     struct argp_state *state) { /*{{{*/
     struct args_check *args = (struct args_check *)state->input;
     char *end;
 
@@ -137,10 +144,11 @@ error_t parser_check(int key, char *arg, struct argp_state *state) { /*{{{*/
             break;
         case 'n':
             errno = 0;
-            args->n = strtol(arg, &end, 10);
-            if (errno == ERANGE || end == arg) {
+            const long v = strtol(arg, &end, 10);
+            if (errno == ERANGE || end == arg || v < INT_MIN || v > INT_MAX) {
                 argp_error(state, "Invalid count: '%s'", arg);
             }
+            args->n = (int)v;
             break;
         case ARGP_KEY_ARG:
         case ARGP_KEY_END:
@@ -151,7 +159,8 @@ error_t parser_check(int key, char *arg, struct argp_state *state) { /*{{{*/
     return 0;
 } /*}}}*/
 
-error_t parser_dequeue(int key, char *arg, struct argp_state *state) { /*{{{*/
+error_t parser_dequeue(const int key, char *arg,
+                       struct argp_state *state) { /*{{{*/
     struct args_dequeue *args = (struct args_dequeue *)state->input;
     char *end;
 
@@ -160,13 +169,17 @@ error_t parser_dequeue(int key, char *arg, struct argp_state *state) { /*{{{*/
             printf("[info] Verbose mode enabled.\n");
             args->verbose = 1;
             break;
+        case 'f':
+            args->force = 1;
+            break;
         case ARGP_KEY_ARG:
             if (state->arg_num == 0) {
                 errno = 0;
-                args->job_id = strtoul(arg, &end, 10);
-                if (errno == ERANGE || end == arg) {
-                    argp_error(state, "Invalid job id format: '%s'", arg);
+                const unsigned long v = strtoul(arg, &end, 10);
+                if (errno == ERANGE || end == arg || v > UINT_MAX) {
+                    argp_error(state, "Invalid count: '%s'", arg);
                 }
+                args->job_id = (int)v;
             } else {
                 argp_usage(state);
             }
@@ -183,8 +196,8 @@ error_t parser_dequeue(int key, char *arg, struct argp_state *state) { /*{{{*/
     return 0;
 } /*}}}*/
 
-error_t parser_release(int key, char *arg, struct argp_state *state) {// {{{
-    (void)arg; /* unused */
+error_t parser_release(const int key, char *arg UNUSED,
+                       struct argp_state *state) { /*{{{*/
     struct args_release *args = (struct args_release *)state->input;
 
     switch (key) {
@@ -201,4 +214,4 @@ error_t parser_release(int key, char *arg, struct argp_state *state) {// {{{
     }
 
     return 0;
-}// }}}
+} /*}}}*/
