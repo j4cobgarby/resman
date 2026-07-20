@@ -44,7 +44,7 @@ typedef struct job_descriptor {
     enum job_type job_type;
     union {
         struct {
-            pid_t pid;  // Job stub PID
+            int pidfd;  // PIDFD for the job process
         } cmd;
         struct {
             unsigned int secs;  // Seconds to reserve
@@ -59,6 +59,7 @@ typedef struct info_request {
 
 typedef struct dequeue_request {
     uuid_t job_uuid;
+    int force;
 } dequeue_request;
 
 typedef struct release_request {
@@ -75,6 +76,13 @@ typedef struct status_response {
     enum {
         STATUS_OK,
         STATUS_FAIL,
+        // Dequeue request failure types
+        STATUS_DEQ_FAIL_JOB_CURRENTLY_RUNNING,
+        STATUS_DEQ_FAIL_NO_SUCH_JOB,
+        STATUS_DEQ_FAIL_NOT_YOUR_JOB,
+        // Release request status types
+        STATUS_REL_OK_SERVER_IDLE,
+        STATUS_REL_FAIL_NOT_YOUR_JOB,
     } status;
 } status_response;
 
