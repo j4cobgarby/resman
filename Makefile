@@ -28,7 +28,10 @@ CLIENT_EXE=resman
 INSTALL_ROOT=/usr/local
 
 .PHONY: all
-all: $(BUILD)/resmand $(BUILD)/resman
+
+server: $(BUILD)/$(SERVER_EXE)
+client: $(BUILD)/$(CLIENT_EXE)
+all: server client
 
 $(BUILD)/$(SERVER_EXE): $(OBJS_SERVER)
 	@mkdir -p $(dir $@)

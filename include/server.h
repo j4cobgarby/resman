@@ -1,19 +1,21 @@
 // vim: fdm=marker
-#include "resman.h"
+#ifndef SERVER_H
+#define SERVER_H
+
 #include <pthread.h> /* pthread_mutex_* */
+
+#include "resman.h"
 
 #define LISTEN_QUEUE 8
 #define POLL_DELAY 2
 
-#define RESMAND_INFO(...) printf("[info]" __VA_ARGS__); fflush(stdout);
-#define RESMAND_ERROR(...) printf("[error!]" __VA_ARGS__); fflush(stdout);
+#define RESMAND_INFO(...) printf("[info] " __VA_ARGS__); fflush(stdout);
+#define RESMAND_ERROR(...) printf("[error] " __VA_ARGS__); fflush(stdout);
 
 /* Thin wrapper around job descriptor for server-only fields */
 typedef struct queued_job {
     job_descriptor job;
     struct queued_job *next;
-    time_t t_started;
-    time_t t_ended;
     int manually_released;
 } queued_job;
 
@@ -28,10 +30,12 @@ void *dispatcher(void *args);
 int make_soc_listen(const char *addr);
 int handle_client(int soc_client);
 void sigint_handler(int sig);
-const queued_job *peek_job(queued_job *q, int off);
+const queued_job *peek_job(const queued_job *q, int off);
 queued_job *deq_job(queued_job **q);
 int enq_job(queued_job **q, job_descriptor job);
 int queue_len(queued_job *q);
+queued_job *find_job(queued_job **q, uuid_t uuid);
 queued_job *remove_job(queued_job **q, uuid_t uuid);
 int send_queue_info(int soc_client, unsigned int count);
-void disp_status(void);
+
+#endif  /* SERVER_H */

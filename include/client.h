@@ -1,7 +1,9 @@
 // vim: fdm=marker
 #ifndef CLIENT_H
 #define CLIENT_H
+
 #include <argp.h>
+
 #include "resman.h"
 
 #define CLIENT_VER_STRING "0.0"
@@ -43,6 +45,7 @@ struct args_check {
 
 struct args_dequeue {
     uuid_t job_id;
+    int force;
     int verbose;
 };
 
